@@ -1,10 +1,12 @@
 #include "bspline_opt/uniform_bspline.h"
-#include "nav_msgs/msg/odometry.hpp"
+#include <memory>
+#include <nav_msgs/msg/odometry.hpp>
 #include "traj_utils/msg/bspline.hpp"
-#include "quadrotor_msgs/msg/position_command.hpp"
-#include "std_msgs/msg/empty.hpp"
+#include <quadrotor_msgs/msg/position_command.hpp>
+#include <std_msgs/msg/empty.hpp>
 #include "visualization_msgs/msg/marker.hpp"
 #include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/bool.hpp>
 
 rclcpp::Publisher<quadrotor_msgs::msg::PositionCommand>::SharedPtr pos_cmd_pub;
 
@@ -167,7 +169,7 @@ void cmdCallback()
     return;
 
   // 统一时间源
-  rclcpp::Clock clock(RCL_ROS_TIME);  
+  rclcpp::Clock clock(RCL_ROS_TIME);
   rclcpp::Time time_now = clock.now();
   double t_cur = (time_now - start_time_).seconds();
 
@@ -231,19 +233,30 @@ void cmdCallback()
   pos_cmd_pub->publish(cmd);
 }
 
+void trajSwitchCallback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+  receive_traj_ = msg->data;
+}
+
 int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
   auto node = rclcpp::Node::make_shared("traj_server");
 
   auto bspline_sub = node->create_subscription<traj_utils::msg::Bspline>(
-      "planning/bspline",
-      10,
-      bsplineCallback);
+    "planning/bspline",
+    10,
+    bsplineCallback);
+
+  auto traj_switch_sub = node->create_subscription<std_msgs::msg::Bool>(
+    "traj_switch",
+    10,
+    trajSwitchCallback
+  );
 
   pos_cmd_pub = node->create_publisher<quadrotor_msgs::msg::PositionCommand>(
-      "/position_cmd",
-      50);
+    "/position_cmd",
+    50);
 
   auto cmd_timer = node->create_wall_timer(
       std::chrono::milliseconds(10),

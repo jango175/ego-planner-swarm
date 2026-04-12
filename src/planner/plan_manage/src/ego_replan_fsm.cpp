@@ -1,5 +1,6 @@
 
 #include <ego_planner/ego_replan_fsm.h>
+#include <rclcpp/clock.hpp>
 
 namespace ego_planner
 {
@@ -48,6 +49,9 @@ namespace ego_planner
       node_->get_parameter("fsm/waypoint" + to_string(i) + "_z", waypoints_[i][2]);
     }
 
+    node_->declare_parameter("fsm/do_init_spin", false);
+    node_->get_parameter("fsm/do_init_spin", enable_init_spin_);
+
     /* initialize main modules */
     visualization_.reset(new PlanningVisualization(node_));
 
@@ -65,25 +69,33 @@ namespace ego_planner
     safety_timer_ = node_->create_wall_timer(std::chrono::milliseconds(50),
                                              std::bind(&EGOReplanFSM::checkCollisionCallback, this));
 
+    spin_cmd_pub = node_->create_publisher<quadrotor_msgs::msg::PositionCommand>(
+      "/position_cmd",
+      50);
+
+    traj_switch_pub = node_->create_publisher<std_msgs::msg::Bool>(
+      "traj_switch",
+      10);
+
     odom_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
-        "odom_world",
-        1,
-        [this](const std::shared_ptr<const nav_msgs::msg::Odometry> &msg)
-        {
-          this->odometryCallback(msg);
-        });
+      "odom_world",
+      1,
+      [this](const std::shared_ptr<const nav_msgs::msg::Odometry> &msg)
+      {
+        this->odometryCallback(msg);
+      });
     // std::bind(&EGOReplanFSM::odometryCallback, this, std::placeholders::_1));
 
     if (planner_manager_->pp_.drone_id >= 1)
     {
       string sub_topic_name = string("/drone_") + std::to_string(planner_manager_->pp_.drone_id - 1) + string("_planning/swarm_trajs");
       swarm_trajs_sub_ = node_->create_subscription<traj_utils::msg::MultiBsplines>(
-          sub_topic_name,
-          10,
-          [this](const std::shared_ptr<const traj_utils::msg::MultiBsplines> &msg)
-          {
-            this->swarmTrajsCallback(msg);
-          });
+        sub_topic_name,
+        10,
+        [this](const std::shared_ptr<const traj_utils::msg::MultiBsplines> &msg)
+        {
+          this->swarmTrajsCallback(msg);
+        });
     }
 
     // ros2 中topic名字中不能出现负号，单机id是-1需要处理
@@ -97,7 +109,7 @@ namespace ego_planner
     {
       pub_topic_name = string("/drone_") + std::to_string(planner_manager_->pp_.drone_id) + string("_planning/swarm_trajs");
     }
-    
+
     swarm_trajs_pub_ = node_->create_publisher<traj_utils::msg::MultiBsplines>(pub_topic_name, 10);
 
     broadcast_bspline_pub_ = node_->create_publisher<traj_utils::msg::Bspline>("planning/broadcast_bspline_from_planner", 10);
@@ -155,7 +167,6 @@ namespace ego_planner
   }
 
   void EGOReplanFSM::readGivenWps()
-
   {
     if (waypoint_num_ <= 0)
     {
@@ -206,7 +217,9 @@ namespace ego_planner
 
       /*** FSM状态转换 ***/
       if (exec_state_ == WAIT_TARGET)
+      {
         changeFSMExecState(GEN_NEW_TRAJ, "TRIG");
+      }
       else
       {
         while (exec_state_ != EXEC_TRAJ)
@@ -241,7 +254,7 @@ namespace ego_planner
 
     init_pt_ = odom_pos_;
 
-    Eigen::Vector3d end_wp(msg->pose.position.x, msg->pose.position.y, 1.0);
+    Eigen::Vector3d end_wp(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
 
     planNextWaypoint(end_wp);
   }
@@ -262,6 +275,18 @@ namespace ego_planner
     odom_orient_.x() = msg->pose.pose.orientation.x;
     odom_orient_.y() = msg->pose.pose.orientation.y;
     odom_orient_.z() = msg->pose.pose.orientation.z;
+
+    tf2::Quaternion q(
+      msg->pose.pose.orientation.x,
+      msg->pose.pose.orientation.y,
+      msg->pose.pose.orientation.z,
+      msg->pose.pose.orientation.w
+    );
+    tf2::Matrix3x3 m(q);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+
+    curr_yaw_ = yaw;
 
     have_odom_ = true;
   }
@@ -461,6 +486,83 @@ namespace ego_planner
     cout << "[FSM]: state: " + state_str[int(exec_state_)] << endl;
   }
 
+  bool EGOReplanFSM::doInitSpin()
+  {
+    if (!enable_init_spin_)
+      return true;
+
+    std_msgs::msg::Bool msg;
+    rclcpp::Clock clock(RCL_ROS_TIME);
+
+    if (spin_done_)
+    {
+      msg.data = false;
+      traj_switch_pub->publish(msg);
+
+      t_prev_ = clock.now();
+
+      hover_pos_ = odom_pos_;
+      prev_yaw_ = curr_yaw_;
+      spin_yaw_ = curr_yaw_;
+      accumulated_yaw_ = 0.0;
+
+      spin_done_ = false;
+    }
+
+    double delta_yaw = curr_yaw_ - prev_yaw_;
+
+    delta_yaw = atan2(sin(delta_yaw), cos(delta_yaw));
+
+    accumulated_yaw_ += delta_yaw;
+    prev_yaw_ = curr_yaw_;
+
+    if (std::abs(accumulated_yaw_) < 2.0 * M_PI)
+    {
+      RCLCPP_INFO(node_->get_logger(), "Performing spin...");
+
+      quadrotor_msgs::msg::PositionCommand cmd;
+
+      rclcpp::Time t_curr = clock.now();
+      double dt = (t_curr - t_prev_).seconds();
+      t_prev_ = t_curr;
+
+      cmd.header.stamp = t_curr;
+      cmd.header.frame_id = "world";
+      cmd.trajectory_flag = quadrotor_msgs::msg::PositionCommand::TRAJECTORY_STATUS_READY;
+      cmd.trajectory_id = 4;
+
+      cmd.position.x = hover_pos_(0);
+      cmd.position.y = hover_pos_(1);
+      cmd.position.z = hover_pos_(2);
+
+      cmd.velocity.x = 0.0;
+      cmd.velocity.y = 0.0;
+      cmd.velocity.z = 0.0;
+
+      cmd.acceleration.x = 0.0;
+      cmd.acceleration.y = 0.0;
+      cmd.acceleration.z = 0.0;
+
+      spin_yaw_ += target_yaw_rate_ * dt;
+      spin_yaw_ = atan2(sin(spin_yaw_), cos(spin_yaw_));
+
+      cmd.yaw = spin_yaw_;
+      cmd.yaw_dot = target_yaw_rate_;
+
+      spin_cmd_pub->publish(cmd);
+    }
+    else
+    {
+      msg.data = true;
+      traj_switch_pub->publish(msg);
+      spin_done_ = true;
+
+      RCLCPP_INFO(node_->get_logger(), "Spin done!");
+    }
+
+    return spin_done_;
+  }
+
   void EGOReplanFSM::execFSMCallback()
   {
     exec_timer_->cancel(); // To avoid blockage
@@ -506,6 +608,10 @@ namespace ego_planner
       {
         if (have_odom_ && have_target_ && have_trigger_)
         {
+          // do a spin
+          if (!doInitSpin())
+            break;
+
           bool success = planFromGlobalTraj(10); // zx-todo
           if (success)
           {
@@ -530,6 +636,9 @@ namespace ego_planner
 
     case GEN_NEW_TRAJ:
     {
+      // do a spin
+      if (!doInitSpin())
+        break;
 
       bool success = planFromGlobalTraj(10); // zx-todo
       if (success)

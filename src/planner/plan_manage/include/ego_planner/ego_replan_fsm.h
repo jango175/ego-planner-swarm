@@ -4,22 +4,25 @@
 #include <Eigen/Eigen>
 #include <algorithm>
 #include <iostream>
-#include "nav_msgs/msg/path.hpp"
-#include "nav_msgs/msg/odometry.hpp"
-#include "sensor_msgs/msg/imu.hpp"
-#include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/empty.hpp"
+#include <nav_msgs/msg/path.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <sensor_msgs/msg/imu.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/empty.hpp>
 #include <vector>
 #include "visualization_msgs/msg/marker.hpp"
-
+#include <quadrotor_msgs/msg/position_command.hpp>
 #include "bspline_opt/bspline_optimizer.h"
 #include "plan_env/grid_map.h"
 #include "traj_utils/msg/bspline.hpp"
 #include "traj_utils/msg/multi_bsplines.hpp"
-#include "geometry_msgs/msg/pose_stamped.hpp"
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include "traj_utils/msg/data_disp.hpp"
 #include "ego_planner/planner_manager.h"
 #include "traj_utils/planning_visualization.h"
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <std_msgs/msg/bool.hpp>
 
 using std::vector;
 
@@ -63,6 +66,7 @@ namespace ego_planner
     double emergency_time_;
     bool flag_realworld_experiment_;
     bool enable_fail_safe_;
+    bool enable_init_spin_;
 
     /* planning data */
     bool have_trigger_, have_target_, have_odom_, have_new_target_, have_recv_pre_agent_;
@@ -80,6 +84,15 @@ namespace ego_planner
 
     bool flag_escape_emergency_;
 
+    double curr_yaw_{0.0};
+    double prev_yaw_{0.0};
+    double accumulated_yaw_{0.0};
+    double spin_yaw_{0.0};
+    double target_yaw_rate_{0.5};
+    Eigen::Vector3d hover_pos_;
+    rclcpp::Time t_prev_;
+    bool spin_done_{true};
+
     /* ROS utils */
     rclcpp::Node::SharedPtr node_;
     rclcpp::TimerBase::SharedPtr exec_timer_, safety_timer_;
@@ -96,6 +109,8 @@ namespace ego_planner
     rclcpp::Publisher<traj_utils::msg::DataDisp>::SharedPtr data_disp_pub_;
     rclcpp::Publisher<traj_utils::msg::MultiBsplines>::SharedPtr swarm_trajs_pub_;
     rclcpp::Publisher<traj_utils::msg::Bspline>::SharedPtr broadcast_bspline_pub_;
+    rclcpp::Publisher<quadrotor_msgs::msg::PositionCommand>::SharedPtr spin_cmd_pub;
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr traj_switch_pub;
 
     /* helper functions */
     bool callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj); // front-end and back-end method
@@ -121,6 +136,7 @@ namespace ego_planner
     void swarmTrajsCallback(const std::shared_ptr<const traj_utils::msg::MultiBsplines> &msg);
     void BroadcastBsplineCallback(const std::shared_ptr<const traj_utils::msg::Bspline> &msg);
 
+    bool doInitSpin();
     bool checkCollision();
     void publishSwarmTrajs(bool startup_pub);
 

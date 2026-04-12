@@ -4,6 +4,7 @@ project(ego_planner)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_compile_options(-Wall -O3 -g)
 
@@ -14,6 +15,8 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(quadrotor_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
@@ -58,26 +61,43 @@ add_executable(ego_planner_node
 # )
 
 ament_target_dependencies(ego_planner_node 
-                          rclcpp nav_msgs visualization_msgs 
-                          geometry_msgs quadrotor_msgs 
-                          plan_env path_searching 
-                          bspline_opt traj_utils 
-                          cv_bridge pcl_conversions )
+  rclcpp
+  tf2
+  nav_msgs
+  std_msgs
+  visualization_msgs
+  geometry_msgs
+  quadrotor_msgs
+  plan_env
+  path_searching
+  bspline_opt
+  traj_utils
+  cv_bridge
+  pcl_conversions
+)
 
 find_library(TRAJ_UTILS_LIB traj_utils_lib PATHS ${traj_utils_LIBRARY_DIRS})
 
 target_link_libraries(ego_planner_node
-    ${TRAJ_UTILS_LIB}
+  ${TRAJ_UTILS_LIB}
 )
 
 add_executable(traj_server src/traj_server.cpp)
 
-ament_target_dependencies(traj_server 
-                          rclcpp nav_msgs 
-                          visualization_msgs geometry_msgs 
-                          quadrotor_msgs plan_env 
-                          path_searching bspline_opt 
-                          traj_utils cv_bridge pcl_conversions)
+ament_target_dependencies(traj_server
+  rclcpp
+  nav_msgs
+  std_msgs
+  visualization_msgs
+  geometry_msgs
+  quadrotor_msgs
+  plan_env
+  path_searching
+  bspline_opt
+  traj_utils
+  cv_bridge
+  pcl_conversions
+)
 
 # Install targets
 install(
@@ -89,6 +109,11 @@ install(
 install(
   DIRECTORY launch/
   DESTINATION share/${PROJECT_NAME}/launch
+)
+
+install(PROGRAMS
+  scripts/ldlidar_qos_bridge.py
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 ament_package()
