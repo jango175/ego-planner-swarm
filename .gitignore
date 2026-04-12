@@ -1,4 +1,4 @@
-.vscode/settings.json
+.vscode/
 .catkin_workspace
 build/
 devel/

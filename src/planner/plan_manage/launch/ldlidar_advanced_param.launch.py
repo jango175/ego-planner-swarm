@@ -105,6 +105,7 @@ def generate_launch_description():
             'fsm/realworld_experiment': False,
             'fsm/fail_safe': True,
             'fsm/do_init_spin': True,
+            'fsm/target_yaw_rate': 0.5,
 
             'fsm/waypoint_num': point_num,
             'fsm/waypoint0_x': point0_x,

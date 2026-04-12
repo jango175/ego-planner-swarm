@@ -1,10 +1,8 @@
 #include "bspline_opt/uniform_bspline.h"
-#include <memory>
 #include <nav_msgs/msg/odometry.hpp>
 #include "traj_utils/msg/bspline.hpp"
 #include <quadrotor_msgs/msg/position_command.hpp>
 #include <std_msgs/msg/empty.hpp>
-#include "visualization_msgs/msg/marker.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
 

@@ -51,6 +51,8 @@ namespace ego_planner
 
     node_->declare_parameter("fsm/do_init_spin", false);
     node_->get_parameter("fsm/do_init_spin", enable_init_spin_);
+    node_->declare_parameter("fsm/target_yaw_rate", 0.5);
+    node->get_parameter("fsm/target_yaw_rate", target_yaw_rate_);
 
     /* initialize main modules */
     visualization_.reset(new PlanningVisualization(node_));

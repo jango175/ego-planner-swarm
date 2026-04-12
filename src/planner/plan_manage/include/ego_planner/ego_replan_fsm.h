@@ -2,18 +2,13 @@
 #define _REBO_REPLAN_FSM_H_
 
 #include <Eigen/Eigen>
-#include <algorithm>
-#include <iostream>
 #include <nav_msgs/msg/path.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/empty.hpp>
 #include <vector>
-#include "visualization_msgs/msg/marker.hpp"
 #include <quadrotor_msgs/msg/position_command.hpp>
-#include "bspline_opt/bspline_optimizer.h"
-#include "plan_env/grid_map.h"
 #include "traj_utils/msg/bspline.hpp"
 #include "traj_utils/msg/multi_bsplines.hpp"
 #include <geometry_msgs/msg/pose_stamped.hpp>
