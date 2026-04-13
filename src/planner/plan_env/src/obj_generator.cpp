@@ -39,6 +39,8 @@ using namespace std;
 int obj_num, _input_type;
 double _x_size, _y_size, _h_size, _vel, _yaw_dot, _acc_r1, _acc_r2, _acc_z, _scale1, _scale2, _interval;
 
+rclcpp::Node::SharedPtr node_;
+
 rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr obj_pub;           // visualize marker
 vector<rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr> pose_pubs; // obj pose (from optitrack)
 vector<LinearObjModel> obj_models;
@@ -65,47 +67,47 @@ void visualizeObj(int id);
 int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
-  auto node = rclcpp::Node::make_shared("dynamic_obj");
+  node_ = rclcpp::Node::make_shared("dynamic_obj");
 
   /* ---------- initialize ---------- */
   /* 参数读取 */
-  node->declare_parameter("obj_generator/obj_num", 20);
-  node->declare_parameter("obj_generator/x_size", 10.0);
-  node->declare_parameter("obj_generator/y_size", 10.0);
-  node->declare_parameter("obj_generator/h_size", 2.0);
-  node->declare_parameter("obj_generator/vel", 2.0);
-  node->declare_parameter("obj_generator/yaw_dot", 2.0);
-  node->declare_parameter("obj_generator/acc_r1", 2.0);
-  node->declare_parameter("obj_generator/acc_r2", 2.0);
-  node->declare_parameter("obj_generator/acc_z", 0.0);
-  node->declare_parameter("obj_generator/scale1", 0.5);
-  node->declare_parameter("obj_generator/scale2", 1.0);
-  node->declare_parameter("obj_generator/interval", 100.0);
-  node->declare_parameter("obj_generator/input_type", 1);
+  node_->declare_parameter("obj_generator/obj_num", 20);
+  node_->declare_parameter("obj_generator/x_size", 10.0);
+  node_->declare_parameter("obj_generator/y_size", 10.0);
+  node_->declare_parameter("obj_generator/h_size", 2.0);
+  node_->declare_parameter("obj_generator/vel", 2.0);
+  node_->declare_parameter("obj_generator/yaw_dot", 2.0);
+  node_->declare_parameter("obj_generator/acc_r1", 2.0);
+  node_->declare_parameter("obj_generator/acc_r2", 2.0);
+  node_->declare_parameter("obj_generator/acc_z", 0.0);
+  node_->declare_parameter("obj_generator/scale1", 0.5);
+  node_->declare_parameter("obj_generator/scale2", 1.0);
+  node_->declare_parameter("obj_generator/interval", 100.0);
+  node_->declare_parameter("obj_generator/input_type", 1);
 
-  node->get_parameter("obj_generator/obj_num", obj_num);
-  node->get_parameter("obj_generator/x_size", _x_size);
-  node->get_parameter("obj_generator/y_size", _y_size);
-  node->get_parameter("obj_generator/h_size", _h_size);
-  node->get_parameter("obj_generator/vel", _vel);
-  node->get_parameter("obj_generator/yaw_dot", _yaw_dot);
-  node->get_parameter("obj_generator/acc_r1", _acc_r1);
-  node->get_parameter("obj_generator/acc_r2", _acc_r2);
-  node->get_parameter("obj_generator/acc_z", _acc_z);
-  node->get_parameter("obj_generator/scale1", _scale1);
-  node->get_parameter("obj_generator/scale2", _scale2);
-  node->get_parameter("obj_generator/interval", _interval);
-  node->get_parameter("obj_generator/input_type", _input_type);
+  node_->get_parameter("obj_generator/obj_num", obj_num);
+  node_->get_parameter("obj_generator/x_size", _x_size);
+  node_->get_parameter("obj_generator/y_size", _y_size);
+  node_->get_parameter("obj_generator/h_size", _h_size);
+  node_->get_parameter("obj_generator/vel", _vel);
+  node_->get_parameter("obj_generator/yaw_dot", _yaw_dot);
+  node_->get_parameter("obj_generator/acc_r1", _acc_r1);
+  node_->get_parameter("obj_generator/acc_r2", _acc_r2);
+  node_->get_parameter("obj_generator/acc_z", _acc_z);
+  node_->get_parameter("obj_generator/scale1", _scale1);
+  node_->get_parameter("obj_generator/scale2", _scale2);
+  node_->get_parameter("obj_generator/interval", _interval);
+  node_->get_parameter("obj_generator/input_type", _input_type);
 
-  obj_pub = node->create_publisher<visualization_msgs::msg::Marker>("/dynamic/obj", 10);
+  obj_pub = node_->create_publisher<visualization_msgs::msg::Marker>("/dynamic/obj", 10);
   for (int i = 0; i < obj_num; ++i)
   {
-    auto pose_pub = node->create_publisher<geometry_msgs::msg::PoseStamped>(
+    auto pose_pub = node_->create_publisher<geometry_msgs::msg::PoseStamped>(
         "/dynamic/pose_" + std::to_string(i), 10);
     pose_pubs.push_back(pose_pub);
   }
 
-  auto update_timer = node->create_wall_timer(
+  auto update_timer = node_->create_wall_timer(
       std::chrono::duration<double>(1 / 30.0), updateCallback);
   cout << "[dynamic]: initialize with " + to_string(obj_num) << " moving obj." << endl;
   rclcpp::sleep_for(std::chrono::seconds(1));
@@ -152,18 +154,18 @@ int main(int argc, char **argv)
     obj_models.push_back(model);
   }
 
-  time_update = rclcpp::Clock().now();
-  time_change = rclcpp::Clock().now();
+  time_update = node_->now();
+  time_change = node_->now();
 
   /* ---------- start loop ---------- */
-  rclcpp::spin(node);
+  rclcpp::spin(node_);
   rclcpp::shutdown();
   return 0;
 }
 
 void updateCallback()
 {
-  rclcpp::Time time_now = rclcpp::Clock().now();
+  rclcpp::Time time_now = node_->now();
 
   /* ---------- change input ---------- */
   // double dtc = (time_now - time_change).toSec();
@@ -229,8 +231,8 @@ void visualizeObj(int id)
 
   /* ---------- rviz ---------- */
   visualization_msgs::msg::Marker mk;
-  mk.header.frame_id = "world";
-  mk.header.stamp = rclcpp::Clock().now();
+  mk.header.frame_id = "map";
+  mk.header.stamp = node_->now();
   mk.type = visualization_msgs::msg::Marker::CUBE;
   mk.action = visualization_msgs::msg::Marker::ADD;
   mk.id = id;
@@ -249,7 +251,7 @@ void visualizeObj(int id)
 
   /* ---------- pose ---------- */
   geometry_msgs::msg::PoseStamped pose;
-  pose.header.frame_id = "world";
+  pose.header.frame_id = "map";
   // pose.header.seq = id;
   pose.pose.position.x = pos(0), pose.pose.position.y = pos(1), pose.pose.position.z = pos(2);
   pose.pose.orientation.w = 1.0;

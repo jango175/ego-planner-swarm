@@ -1,6 +1,7 @@
 #ifndef _PLANNER_MANAGER_H_
 #define _PLANNER_MANAGER_H_
 
+#include <rclcpp/node.hpp>
 #include <stdlib.h>
 
 #include <bspline_opt/bspline_optimizer.h>
@@ -51,10 +52,12 @@ namespace ego_planner
     LocalTrajData local_data_;
     GlobalTrajData global_data_;
     GridMap::Ptr grid_map_;
-    fast_planner::ObjPredictor::Ptr obj_predictor_;    
+    fast_planner::ObjPredictor::Ptr obj_predictor_;
     SwarmTrajData swarm_trajs_buf_;
 
   private:
+    rclcpp::Node::SharedPtr node_;
+
     /* main planning algorithms & modules */
     PlanningVisualization::Ptr visualization_;
 

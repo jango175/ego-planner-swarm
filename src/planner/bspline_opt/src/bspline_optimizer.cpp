@@ -7,6 +7,7 @@ namespace ego_planner
 
   void BsplineOptimizer::setParam(rclcpp::Node::SharedPtr node)
   {
+    node_ = node;
 
     node->declare_parameter("optimization/lambda_smooth", -1.0);
     node->declare_parameter("optimization/lambda_collision", -1.0);
@@ -578,7 +579,7 @@ namespace ego_planner
     {
       // cout << "in=" << in.transpose() << " out=" << out.transpose() << endl;
       Eigen::Vector3d in(init_points.col(segment_ids[i].first)), out(init_points.col(segment_ids[i].second));
-      if (a_star_->AstarSearch(/*(in-out).norm()/10+0.05*/ 0.1, in, out))
+      if (a_star_->AstarSearch(/*(in-out).norm()/10+0.05*/ 0.1, in, out, node_))
       {
         a_star_pathes.push_back(a_star_->getPath());
       }
@@ -876,7 +877,7 @@ namespace ego_planner
     cost = 0.0;
     int end_idx = q.cols() - order_ - (double)(q.cols() - 2 * order_) * 1.0 / 3.0; // Only check the first 2/3 points
     const double CLEARANCE = swarm_clearance_ * 2;
-    double t_now = rclcpp::Clock().now().seconds();
+    double t_now = node_->now().seconds();
     constexpr double a = 2.0, b = 1.0, inv_a2 = 1 / a / a, inv_b2 = 1 / b / b;
 
     for (int i = order_; i < end_idx; i++)
@@ -929,7 +930,7 @@ namespace ego_planner
     cost = 0.0;
     int end_idx = q.cols() - order_;
     constexpr double CLEARANCE = 1.5;
-    double t_now = rclcpp::Clock().now().seconds();
+    double t_now = node_->now().seconds();
 
     for (int i = order_; i < end_idx; i++)
     {
@@ -1376,7 +1377,7 @@ namespace ego_planner
       {
         /*** a star search ***/
         Eigen::Vector3d in(cps_.points.col(segment_ids[i].first)), out(cps_.points.col(segment_ids[i].second));
-        if (a_star_->AstarSearch(/*(in-out).norm()/10+0.05*/ 0.1, in, out))
+        if (a_star_->AstarSearch(/*(in-out).norm()/10+0.05*/ 0.1, in, out, node_))
         {
           a_star_pathes.push_back(a_star_->getPath());
         }
@@ -1547,7 +1548,7 @@ namespace ego_planner
     // 变量个数
     variable_num_ = 3 * (end_id - start_id);
 
-    rclcpp::Time t0 = rclcpp::Clock().now(), t1, t2;
+    rclcpp::Time t0 = node_->now(), t1, t2;
     int restart_nums = 0, rebound_times = 0;
     ;
     bool flag_force_return, flag_occ, success;
@@ -1575,10 +1576,10 @@ namespace ego_planner
       lbfgs_params.g_epsilon = 0.01;
 
       /* ---------- optimize ---------- */
-      t1 = rclcpp::Clock().now();
+      t1 = node_->now();
       // 执行优化
       int result = lbfgs::lbfgs_optimize(variable_num_, q, &final_cost, BsplineOptimizer::costFunctionRebound, NULL, BsplineOptimizer::earlyExit, this, &lbfgs_params);
-      t2 = rclcpp::Clock().now();
+      t2 = node_->now();
       double time_ms = (t2 - t1).seconds() * 1000;
       double total_time_ms = (t2 - t0).seconds() * 1000;
 
@@ -1845,7 +1846,7 @@ namespace ego_planner
     Eigen::MatrixXd g_fitness = Eigen::MatrixXd::Zero(3, cps_.points.cols());
     Eigen::MatrixXd g_feasibility = Eigen::MatrixXd::Zero(3, cps_.points.cols());
 
-    // time_satrt = rclcpp::Clock().now();
+    // time_satrt = node_->now();
 
     calcSmoothnessCost(cps_.points, f_smoothness, g_smoothness);
     calcFitnessCost(cps_.points, f_fitness, g_fitness);

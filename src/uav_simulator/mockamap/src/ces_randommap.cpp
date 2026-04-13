@@ -16,6 +16,7 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <rclcpp/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
@@ -39,7 +40,7 @@ using namespace mocka;
 #if MAP_OR_WORLD
 const string kFrameIdNs_ = "map";
 #else
-const string kFrameIdNs_ = "world";
+const string kFrameIdNs_ = "map";
 #endif
 
 pcl::search::KdTree<pcl::PointXYZ> kdtreeLocalMap;
@@ -75,6 +76,7 @@ typedef Eigen::Vector3d ObsPos;
 typedef Eigen::Vector3d ObsSize; // x, y, height --- z
 typedef pair<ObsPos, ObsPos> Obstacle;
 std::vector<Obstacle> obstacle_list;
+
 
 // 生成固定的障碍物地图
 void fixedMapGenerate()
@@ -182,12 +184,12 @@ void rcvOdometryCallback(const nav_msgs::msg::Odometry::SharedPtr odom)
 
 int frequence_division_global = 40;
 
-void publishAllPoints()
+void publishAllPoints(rclcpp::Node::SharedPtr node)
 {
   if (!map_ok)
     return;
 
-  if ((rclcpp::Clock().now() - begin_time).seconds() > 7.0)
+  if ((node->now() - begin_time).seconds() > 7.0)
     return;
 
   frequence_division_global--;
@@ -201,7 +203,7 @@ void publishAllPoints()
   }
 }
 
-void pubSensedPoints()
+void pubSensedPoints(rclcpp::Node::SharedPtr node)
 {
   if (!map_ok || !_has_odom)
     return;
@@ -246,7 +248,7 @@ void pubSensedPoints()
   localMap_pcd.header.frame_id = kFrameIdNs_;
   _local_map_pub->publish(localMap_pcd);
 
-  rclcpp::Time time_aft_sensing = rclcpp::Clock().now();
+  rclcpp::Time time_aft_sensing = node->now();
 
   if ((time_aft_sensing - begin_time).seconds() > 5.0)
     return;

@@ -2,6 +2,7 @@
 #define _DYN_A_STAR_H_
 
 #include <iostream>
+#include <rclcpp/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <Eigen/Eigen>
 #include <plan_env/grid_map.h>
@@ -83,7 +84,7 @@ public:
 
 	void initGridMap(GridMap::Ptr occ_map, const Eigen::Vector3i pool_size);
 
-	bool AstarSearch(const double step_size, Eigen::Vector3d start_pt, Eigen::Vector3d end_pt);
+	bool AstarSearch(const double step_size, Eigen::Vector3d start_pt, Eigen::Vector3d end_pt, rclcpp::Node::SharedPtr node);
 
 	std::vector<Eigen::Vector3d> getPath();
 };

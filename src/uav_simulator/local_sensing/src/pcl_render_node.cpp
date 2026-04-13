@@ -51,6 +51,8 @@ double fx, fy, cx, cy;
 
 DepthRender depthrender; 
 
+rclcpp::Node::SharedPtr node_;
+
 rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub_depth;
 rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub_color;
 rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_pose;
@@ -145,8 +147,8 @@ void rcvOdometryCallback(const nav_msgs::msg::Odometry::SharedPtr odom)
 //   static tf2_ros::TransformBroadcaster br;
 //   geometry_msgs::msg::TransformStamped transformStamped;
 
-//   transformStamped.header.stamp = rclcpp::Clock().now();
-//   transformStamped.header.frame_id = "world";
+//   transformStamped.header.stamp = node_->now();
+//   transformStamped.header.frame_id = "map";
 //   transformStamped.child_frame_id = "camera";
 
 //   transformStamped.transform.translation.x = cam2world(0, 3);
@@ -366,34 +368,34 @@ void render_currentpose()
 int main(int argc, char **argv) {
   // Initialize ROS 2 node
   rclcpp::init(argc, argv);
-  rclcpp::Node::SharedPtr node = rclcpp::Node::make_shared("pcl_render");
+  node_ = rclcpp::Node::make_shared("pcl_render");
 
-  node->declare_parameter("cam_width", 640);
-  node->declare_parameter("cam_height", 480);
-  node->declare_parameter("cam_fx", 387.0);
-  node->declare_parameter("cam_fy", 387.0);
-  node->declare_parameter("cam_cx", 320.0);
-  node->declare_parameter("cam_cy", 240.0);
-  node->declare_parameter("sensing_horizon", 100.0);
-  node->declare_parameter("sensing_rate", 10.0);
-  node->declare_parameter("estimation_rate", 5.0);
-  node->declare_parameter("map/x_size", 10.0);
-  node->declare_parameter("map/y_size", 10.0);
-  node->declare_parameter("map/z_size", 10.0);
+  node_->declare_parameter("cam_width", 640);
+  node_->declare_parameter("cam_height", 480);
+  node_->declare_parameter("cam_fx", 387.0);
+  node_->declare_parameter("cam_fy", 387.0);
+  node_->declare_parameter("cam_cx", 320.0);
+  node_->declare_parameter("cam_cy", 240.0);
+  node_->declare_parameter("sensing_horizon", 100.0);
+  node_->declare_parameter("sensing_rate", 10.0);
+  node_->declare_parameter("estimation_rate", 5.0);
+  node_->declare_parameter("map/x_size", 10.0);
+  node_->declare_parameter("map/y_size", 10.0);
+  node_->declare_parameter("map/z_size", 10.0);
 
   // Get parameters
-  node->get_parameter("cam_width", width);
-  node->get_parameter("cam_height", height);
-  node->get_parameter("cam_fx", fx);
-  node->get_parameter("cam_fy", fy);
-  node->get_parameter("cam_cx", cx);
-  node->get_parameter("cam_cy", cy);
-  node->get_parameter("sensing_horizon", sensing_horizon);
-  node->get_parameter("sensing_rate", sensing_rate);
-  node->get_parameter("estimation_rate", estimation_rate);
-  node->get_parameter("map/x_size", _x_size);
-  node->get_parameter("map/y_size", _y_size);
-  node->get_parameter("map/z_size", _z_size);
+  node_->get_parameter("cam_width", width);
+  node_->get_parameter("cam_height", height);
+  node_->get_parameter("cam_fx", fx);
+  node_->get_parameter("cam_fy", fy);
+  node_->get_parameter("cam_cx", cx);
+  node_->get_parameter("cam_cy", cy);
+  node_->get_parameter("sensing_horizon", sensing_horizon);
+  node_->get_parameter("sensing_rate", sensing_rate);
+  node_->get_parameter("estimation_rate", estimation_rate);
+  node_->get_parameter("map/x_size", _x_size);
+  node_->get_parameter("map/y_size", _y_size);
+  node_->get_parameter("map/z_size", _z_size);
 
   std::cout<< "camera parameter" << fx << fy << cx << cy << width << height << std::endl;
   depthrender.set_para(fx, fy, cx, cy, width, height);
@@ -412,29 +414,29 @@ int main(int argc, char **argv) {
   cam2world = Matrix4d::Identity();
 
   // Create ROS 2 subscribers and publishers
-  auto global_map_sub = node->create_subscription<sensor_msgs::msg::PointCloud2>(
+  auto global_map_sub = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
     "global_map", 1, rcvGlobalPointCloudCallBack);
   
-  auto local_map_sub = node->create_subscription<sensor_msgs::msg::PointCloud2>(
+  auto local_map_sub = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
     "local_map", 1, rcvLocalPointCloudCallBack);
   
-  auto odom_sub = node->create_subscription<nav_msgs::msg::Odometry>(
+  auto odom_sub = node_->create_subscription<nav_msgs::msg::Odometry>(
     "odometry", 50, rcvOdometryCallback);
 
-  pub_depth = node->create_publisher<sensor_msgs::msg::Image>("depth", 1000);
-  pub_color = node->create_publisher<sensor_msgs::msg::Image>("colordepth", 1000);
-  pub_pose = node->create_publisher<geometry_msgs::msg::PoseStamped>("camera_pose", 1000);
-  // pub_pcl_world = node->create_publisher<sensor_msgs::msg::PointCloud2>("rendered_pcl", 1);
-  pub_pcl_world = node->create_publisher<sensor_msgs::msg::PointCloud2>("pcl_render_node/cloud", 1);
+  pub_depth = node_->create_publisher<sensor_msgs::msg::Image>("depth", 1000);
+  pub_color = node_->create_publisher<sensor_msgs::msg::Image>("colordepth", 1000);
+  pub_pose = node_->create_publisher<geometry_msgs::msg::PoseStamped>("camera_pose", 1000);
+  // pub_pcl_world = node_->create_publisher<sensor_msgs::msg::PointCloud2>("rendered_pcl", 1);
+  pub_pcl_world = node_->create_publisher<sensor_msgs::msg::PointCloud2>("pcl_render_node/cloud", 1);
 
   // Set up timers for sensing and estimation
   double sensing_duration = 1.0 / sensing_rate;
   double estimate_duration = 1.0 / estimation_rate;
 
-  auto local_sensing_timer = node->create_wall_timer(
+  auto local_sensing_timer = node_->create_wall_timer(
     std::chrono::duration<double>(sensing_duration), std::bind(&renderSensedPoints));
   
-  auto estimation_timer = node->create_wall_timer(
+  auto estimation_timer = node_->create_wall_timer(
     std::chrono::duration<double>(estimate_duration), std::bind(&pubCameraPose));
 
   _inv_resolution = 1.0 / _resolution;
@@ -450,7 +452,7 @@ int main(int argc, char **argv) {
   rclcpp::Rate rate(100);
   bool status = rclcpp::ok();
   while (status) {
-    rclcpp::spin_some(node);  
+    rclcpp::spin_some(node_);
     status = rclcpp::ok();
     rate.sleep();
   }

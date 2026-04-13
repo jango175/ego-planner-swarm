@@ -7,7 +7,7 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "quadrotor_msgs/msg/position_command.hpp"
 
-
+rclcpp::Node::SharedPtr node_;
 rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr _odom_pub;
 rclcpp::Subscription<quadrotor_msgs::msg::PositionCommand>::SharedPtr _cmd_sub;
 
@@ -27,8 +27,8 @@ void rcvPosCmdCallBack(const quadrotor_msgs::msg::PositionCommand cmd)
 void pubOdom()
 {
     auto odom = nav_msgs::msg::Odometry();
-    odom.header.stamp = rclcpp::Clock().now();
-    odom.header.frame_id = "world";
+    odom.header.stamp = node_->now();
+    odom.header.frame_id = "map";
 
     if (rcv_cmd)
     {
@@ -93,20 +93,20 @@ int main(int argc, char *argv[])
 {
     // 初始化ROS节点
     rclcpp::init(argc, argv);
-    auto node = rclcpp::Node::make_shared("odom_generator");
+    node_ = rclcpp::Node::make_shared("odom_generator");
 
     // 读取参数
-    node->declare_parameter("init_x", 0.0);
-    node->declare_parameter("init_y", 0.0);
-    node->declare_parameter("init_z", 0.0);
-    node->get_parameter("init_x", init_x);
-    node->get_parameter("init_y", init_y);
-    node->get_parameter("init_z", init_z);
+    node_->declare_parameter("init_x", 0.0);
+    node_->declare_parameter("init_y", 0.0);
+    node_->declare_parameter("init_z", 0.0);
+    node_->get_parameter("init_x", init_x);
+    node_->get_parameter("init_y", init_y);
+    node_->get_parameter("init_z", init_z);
 
     // 创建订阅者和发布者
-    _cmd_sub = node->create_subscription<quadrotor_msgs::msg::PositionCommand>(
+    _cmd_sub = node_->create_subscription<quadrotor_msgs::msg::PositionCommand>(
         "command", 1, rcvPosCmdCallBack);
-    _odom_pub = node->create_publisher<nav_msgs::msg::Odometry>("odometry", 1);
+    _odom_pub = node_->create_publisher<nav_msgs::msg::Odometry>("odometry", 1);
 
     // 主循环，发布里程计信息
     rclcpp::Rate rate(100);  // 100Hz
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
     while (status)
     {
         pubOdom();
-        rclcpp::spin_some(node);
+        rclcpp::spin_some(node_);
         status = rclcpp::ok();
         rate.sleep();
     }

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <rclcpp/node.hpp>
 #include <string>
 #include "rclcpp/rclcpp.hpp"
 #include "tf2_ros/transform_broadcaster.h"
@@ -30,6 +31,8 @@ bool origin = false;
 bool isOriginSet = false;
 colvec poseOrigin(6);
 
+rclcpp::Node::SharedPtr node_;
+
 rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr posePub;
 rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pathPub;
 rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr velPub;
@@ -56,8 +59,8 @@ string _frame_id;
 int _drone_id;
 
 // debug
-rclcpp::Time debug_time = rclcpp::Clock().now();
-rclcpp::Time debug_time_last = rclcpp::Clock().now();
+rclcpp::Time debug_time;
+rclcpp::Time debug_time_last;
 double time_gap = 0;
 std_msgs::msg::Float64 time_message;
 rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr timePub;
@@ -99,7 +102,7 @@ void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     // Pose
     poseROS.header = msg->header;
     poseROS.header.stamp = msg->header.stamp;
-    poseROS.header.frame_id = string("world");
+    poseROS.header.frame_id = string("map");
     poseROS.pose.position.x = pose(0);
     poseROS.pose.position.y = pose(1);
     poseROS.pose.position.z = pose(2);
@@ -116,7 +119,7 @@ void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     yprVel(1) = -atan2(vel(2), norm(vel.rows(0, 1), 2));
     yprVel(2) = 0;
     q = R_to_quaternion(ypr_to_R(yprVel));
-    velROS.header.frame_id = string("world");
+    velROS.header.frame_id = string("map");
     velROS.header.stamp = msg->header.stamp;
     velROS.ns = string("velocity");
     velROS.id = 0;
@@ -186,7 +189,7 @@ void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
                 }
             }
         }
-        covROS.header.frame_id = string("world");
+        covROS.header.frame_id = string("map");
         covROS.header.stamp = msg->header.stamp;
         covROS.ns = string("covariance");
         covROS.id = 0;
@@ -234,7 +237,7 @@ void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
                     }
                 }
             }
-            covVelROS.header.frame_id = string("world");
+            covVelROS.header.frame_id = string("map");
             covVelROS.header.stamp = msg->header.stamp;
             covVelROS.ns = string("covariance_velocity");
             covVelROS.id = 0;
@@ -265,8 +268,8 @@ void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     rclcpp::Time t = msg->header.stamp;
     if ((t - pt).seconds() > 0.5)
     {
-        trajROS.header.frame_id = string("world");
-        trajROS.header.stamp = rclcpp::Clock().now();
+        trajROS.header.frame_id = string("map");
+        trajROS.header.stamp = node_->now();
         trajROS.ns = string("trajectory");
         trajROS.type = visualization_msgs::msg::Marker::LINE_LIST;
         trajROS.action = visualization_msgs::msg::Marker::ADD;
@@ -306,7 +309,7 @@ void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     }
 
     // Sensor availability
-    sensorROS.header.frame_id = string("world");
+    sensorROS.header.frame_id = string("map");
     sensorROS.header.stamp = msg->header.stamp;
     sensorROS.ns = string("sensor");
     sensorROS.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
@@ -373,7 +376,7 @@ void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     meshROS.color.b = color_b;
     meshROS.mesh_resource = mesh_resource;
     meshPub->publish(meshROS);
-    debug_time = rclcpp::Clock().now();
+    debug_time = node_->now();
     time_gap = (debug_time - debug_time_last).seconds();
     time_message.data = time_gap;
     debug_time_last = debug_time;
@@ -414,7 +417,7 @@ void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
         // 发布 world -> base_s
         geometry_msgs::msg::TransformStamped transformStamped;
         transformStamped.header.stamp = msg->header.stamp; // 时间戳
-        transformStamped.header.frame_id = "world";        // 父坐标系
+        transformStamped.header.frame_id = "map";        // 父坐标系
         transformStamped.child_frame_id = base_s;          // 子坐标系
         transformStamped.transform.translation.x = transform.getOrigin().x();
         transformStamped.transform.translation.y = transform.getOrigin().y();
@@ -505,64 +508,67 @@ void cmd_callback(const quadrotor_msgs::msg::PositionCommand cmd)
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
-    auto node = rclcpp::Node::make_shared("odom_visualization");
+    node_ = rclcpp::Node::make_shared("odom_visualization");
 
-    node->declare_parameter("mesh_resource", "package://odom_visualization/meshes/hummingbird.mesh");
-    node->declare_parameter("color/r", 1.0);
-    node->declare_parameter("color/g", 0.0);
-    node->declare_parameter("color/b", 0.0);
-    node->declare_parameter("color/a", 1.0);
-    node->declare_parameter("origin", false);
-    node->declare_parameter("robot_scale", 2.0);
-    node->declare_parameter("frame_id", "world");
+    debug_time = node_->now();
+    debug_time_last = node_->now();
 
-    node->declare_parameter("cross_config", false);
-    node->declare_parameter("tf45", false);
-    node->declare_parameter("covariance_scale", 100.0);
-    node->declare_parameter("covariance_position", false);
-    node->declare_parameter("covariance_velocity", false);
-    node->declare_parameter("covariance_color", false);
-    node->declare_parameter("drone_id", -1);
+    node_->declare_parameter("mesh_resource", "package://odom_visualization/meshes/hummingbird.mesh");
+    node_->declare_parameter("color/r", 1.0);
+    node_->declare_parameter("color/g", 0.0);
+    node_->declare_parameter("color/b", 0.0);
+    node_->declare_parameter("color/a", 1.0);
+    node_->declare_parameter("origin", false);
+    node_->declare_parameter("robot_scale", 2.0);
+    node_->declare_parameter("frame_id", "map");
 
-    node->get_parameter("mesh_resource", mesh_resource);
-    node->get_parameter("color/r", color_r);
-    node->get_parameter("color/g", color_g);
-    node->get_parameter("color/b", color_b);
-    node->get_parameter("color/a", color_a);
-    node->get_parameter("origin", origin);
-    node->get_parameter("robot_scale", scale);
-    node->get_parameter("frame_id", _frame_id);
+    node_->declare_parameter("cross_config", false);
+    node_->declare_parameter("tf45", false);
+    node_->declare_parameter("covariance_scale", 100.0);
+    node_->declare_parameter("covariance_position", false);
+    node_->declare_parameter("covariance_velocity", false);
+    node_->declare_parameter("covariance_color", false);
+    node_->declare_parameter("drone_id", -1);
+
+    node_->get_parameter("mesh_resource", mesh_resource);
+    node_->get_parameter("color/r", color_r);
+    node_->get_parameter("color/g", color_g);
+    node_->get_parameter("color/b", color_b);
+    node_->get_parameter("color/a", color_a);
+    node_->get_parameter("origin", origin);
+    node_->get_parameter("robot_scale", scale);
+    node_->get_parameter("frame_id", _frame_id);
     
-    node->get_parameter("cross_config", cross_config);
-    node->get_parameter("tf45", tf45);
-    node->get_parameter("covariance_scale", cov_scale);
-    node->get_parameter("covariance_position", cov_pos);
-    node->get_parameter("covariance_velocity", cov_vel);
-    node->get_parameter("covariance_color", cov_color);
-    node->get_parameter("drone_id", _drone_id);
+    node_->get_parameter("cross_config", cross_config);
+    node_->get_parameter("tf45", tf45);
+    node_->get_parameter("covariance_scale", cov_scale);
+    node_->get_parameter("covariance_position", cov_pos);
+    node_->get_parameter("covariance_velocity", cov_vel);
+    node_->get_parameter("covariance_color", cov_color);
+    node_->get_parameter("drone_id", _drone_id);
 
 
     // 发布者和订阅者
-    auto sub_odom = node->create_subscription<nav_msgs::msg::Odometry>(
+    auto sub_odom = node_->create_subscription<nav_msgs::msg::Odometry>(
         "odom", 100, odom_callback);
-    auto sub_cmd = node->create_subscription<quadrotor_msgs::msg::PositionCommand>(
+    auto sub_cmd = node_->create_subscription<quadrotor_msgs::msg::PositionCommand>(
         "cmd", 100, cmd_callback);
 
-    posePub = node->create_publisher<geometry_msgs::msg::PoseStamped>("pose", 100);
-    pathPub = node->create_publisher<nav_msgs::msg::Path>("path", 100);
-    velPub = node->create_publisher<visualization_msgs::msg::Marker>("velocity", 100);
-    covPub = node->create_publisher<visualization_msgs::msg::Marker>("covariance", 100);
-    covVelPub = node->create_publisher<visualization_msgs::msg::Marker>("covariance_velocity", 100);
-    trajPub = node->create_publisher<visualization_msgs::msg::Marker>("trajectory", 100);
-    sensorPub = node->create_publisher<visualization_msgs::msg::Marker>("sensor", 100);
-    meshPub = node->create_publisher<visualization_msgs::msg::Marker>("robot", 100);
-    heightPub = node->create_publisher<sensor_msgs::msg::Range>("height", 100);
+    posePub = node_->create_publisher<geometry_msgs::msg::PoseStamped>("pose", 100);
+    pathPub = node_->create_publisher<nav_msgs::msg::Path>("path", 100);
+    velPub = node_->create_publisher<visualization_msgs::msg::Marker>("velocity", 100);
+    covPub = node_->create_publisher<visualization_msgs::msg::Marker>("covariance", 100);
+    covVelPub = node_->create_publisher<visualization_msgs::msg::Marker>("covariance_velocity", 100);
+    trajPub = node_->create_publisher<visualization_msgs::msg::Marker>("trajectory", 100);
+    sensorPub = node_->create_publisher<visualization_msgs::msg::Marker>("sensor", 100);
+    meshPub = node_->create_publisher<visualization_msgs::msg::Marker>("robot", 100);
+    heightPub = node_->create_publisher<sensor_msgs::msg::Range>("height", 100);
 
-    timePub = node->create_publisher<std_msgs::msg::Float64>("time_gap", 100);
-    
-    broadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(node);
+    timePub = node_->create_publisher<std_msgs::msg::Float64>("time_gap", 100);
 
-    rclcpp::spin(node);
+    broadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
+
+    rclcpp::spin(node_);
     rclcpp::shutdown();
     return 0;
 }

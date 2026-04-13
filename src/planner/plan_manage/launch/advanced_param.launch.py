@@ -174,7 +174,7 @@ def generate_launch_description():
             {'grid_map/visualization_truncate_height': 1.8},
             {'grid_map/show_occ_time': False},
             {'grid_map/pose_type': 1},
-            {'grid_map/frame_id': "world"},
+            {'grid_map/frame_id': "map"},
             # planner manager
             {'manager/max_vel': max_vel},
             {'manager/max_acc': max_acc},

@@ -1,11 +1,13 @@
 #include "bspline_opt/uniform_bspline.h"
 #include <nav_msgs/msg/odometry.hpp>
 #include "traj_utils/msg/bspline.hpp"
-#include <quadrotor_msgs/msg/position_command.hpp>
+#include "quadrotor_msgs/msg/position_command.hpp"
+#include <rclcpp/node.hpp>
 #include <std_msgs/msg/empty.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
 
+rclcpp::Node::SharedPtr node_;
 rclcpp::Publisher<quadrotor_msgs::msg::PositionCommand>::SharedPtr pos_cmd_pub;
 
 quadrotor_msgs::msg::PositionCommand cmd;
@@ -23,6 +25,8 @@ int traj_id_;
 // yaw control
 double last_yaw_, last_yaw_dot_;
 double time_forward_;
+bool spin_done_ = true;
+
 
 void bsplineCallback(traj_utils::msg::Bspline::ConstPtr msg)
 {
@@ -55,7 +59,8 @@ void bsplineCallback(traj_utils::msg::Bspline::ConstPtr msg)
 
   // UniformBspline yaw_traj(yaw_pts, msg->order, msg->yaw_dt);
 
-  start_time_ = msg->start_time;
+  // start_time_ = msg->start_time;
+  start_time_ = rclcpp::Time(msg->start_time, node_->get_clock()->get_clock_type());
   traj_id_ = msg->traj_id;
 
   traj_.clear();
@@ -67,6 +72,7 @@ void bsplineCallback(traj_utils::msg::Bspline::ConstPtr msg)
 
   receive_traj_ = true;
 }
+
 
 std::pair<double, double> calculate_yaw(double t_cur, Eigen::Vector3d &pos, rclcpp::Time &time_now, rclcpp::Time &time_last)
 {
@@ -160,21 +166,22 @@ std::pair<double, double> calculate_yaw(double t_cur, Eigen::Vector3d &pos, rclc
   return yaw_yawdot;
 }
 
+
 void cmdCallback()
 {
   /* no publishing before receive traj_ */
-  if (!receive_traj_)
+  if (!receive_traj_ || !spin_done_)
     return;
 
   // 统一时间源
-  rclcpp::Clock clock(RCL_ROS_TIME);
-  rclcpp::Time time_now = clock.now();
+  // rclcpp::Clock clock(RCL_ROS_TIME);
+  rclcpp::Time time_now = node_->now();
   double t_cur = (time_now - start_time_).seconds();
 
   Eigen::Vector3d pos(Eigen::Vector3d::Zero()), vel(Eigen::Vector3d::Zero()), acc(Eigen::Vector3d::Zero()), pos_f;
   std::pair<double, double> yaw_yawdot(0, 0);
 
-  static rclcpp::Time time_last = clock.now();
+  static rclcpp::Time time_last = node_->now();
   if (t_cur < traj_duration_ && t_cur >= 0.0)
   {
     pos = traj_[0].evaluateDeBoorT(t_cur);
@@ -207,7 +214,7 @@ void cmdCallback()
   time_last = time_now;
 
   cmd.header.stamp = time_now;
-  cmd.header.frame_id = "world";
+  cmd.header.frame_id = "map";
   cmd.trajectory_flag = quadrotor_msgs::msg::PositionCommand::TRAJECTORY_STATUS_READY;
   cmd.trajectory_id = traj_id_;
 
@@ -231,32 +238,34 @@ void cmdCallback()
   pos_cmd_pub->publish(cmd);
 }
 
+
 void trajSwitchCallback(const std_msgs::msg::Bool::SharedPtr msg)
 {
-  receive_traj_ = msg->data;
+  spin_done_ = msg->data;
 }
+
 
 int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
-  auto node = rclcpp::Node::make_shared("traj_server");
+  node_ = rclcpp::Node::make_shared("traj_server");
 
-  auto bspline_sub = node->create_subscription<traj_utils::msg::Bspline>(
+  auto bspline_sub = node_->create_subscription<traj_utils::msg::Bspline>(
     "planning/bspline",
     10,
     bsplineCallback);
 
-  auto traj_switch_sub = node->create_subscription<std_msgs::msg::Bool>(
+  auto traj_switch_sub = node_->create_subscription<std_msgs::msg::Bool>(
     "traj_switch",
     10,
     trajSwitchCallback
   );
 
-  pos_cmd_pub = node->create_publisher<quadrotor_msgs::msg::PositionCommand>(
+  pos_cmd_pub = node_->create_publisher<quadrotor_msgs::msg::PositionCommand>(
     "/position_cmd",
     50);
 
-  auto cmd_timer = node->create_wall_timer(
+  auto cmd_timer = node_->create_wall_timer(
       std::chrono::milliseconds(10),
       cmdCallback);
 
@@ -269,17 +278,17 @@ int main(int argc, char **argv)
   cmd.kv[1] = vel_gain[1];
   cmd.kv[2] = vel_gain[2];
 
-  node->declare_parameter("traj_server/time_forward", -1.0);
-  node->get_parameter("traj_server/time_forward", time_forward_);
+  node_->declare_parameter("traj_server/time_forward", -1.0);
+  node_->get_parameter("traj_server/time_forward", time_forward_);
 
   last_yaw_ = 0.0;
   last_yaw_dot_ = 0.0;
 
   rclcpp::sleep_for(std::chrono::seconds(1));
 
-  RCLCPP_WARN(node->get_logger(), "[Traj server]: ready.");
+  RCLCPP_WARN(node_->get_logger(), "[Traj server]: ready.");
 
-  rclcpp::spin(node);
+  rclcpp::spin(node_);
   rclcpp::shutdown();
 
   return 0;

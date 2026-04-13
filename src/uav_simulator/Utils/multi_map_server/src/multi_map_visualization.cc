@@ -1,11 +1,14 @@
 #include <iostream>
 #include <pose_utils/pose_utils.h>
 #include "rclcpp/rclcpp.hpp"
+#include <rclcpp/node.hpp>
 #include <sensor_msgs/msg/point_cloud.hpp>
 #include <multi_map_server/msg/multi_occupancy_grid.hpp>
 #include <multi_map_server/msg/multi_sparse_map3_d.hpp>
 #include <multi_map_server/Map2D.h>
 #include <multi_map_server/Map3D.h>
+
+rclcpp::Node::SharedPtr node_;
 
 rclcpp::Publisher<multi_map_server::msg::MultiOccupancyGrid>::SharedPtr pub1;
 rclcpp::Publisher<sensor_msgs::msg::PointCloud>::SharedPtr pub2;
@@ -28,7 +31,7 @@ void maps2d_callback(const multi_map_server::msg::MultiOccupancyGrid::ConstPtr &
     m.origins.resize(maps2d.size());
     for (unsigned int k = 0; k < maps2d.size(); k++)
     {
-        m.maps[k] = maps2d[k].GetMap();
+        m.maps[k] = maps2d[k].GetMap(node_->now());
         m.origins[k] = origins2d[k];
     }
     pub1->publish(m);
@@ -39,7 +42,7 @@ void maps3d_callback(const multi_map_server::msg::MultiSparseMap3D::ConstPtr &ms
     // Update incremental map
     maps3d.resize(msg->maps.size());
     for (unsigned int k = 0; k < msg->maps.size(); k++)
-        maps3d[k].UnpackMsg(msg->maps[k]);
+        maps3d[k].UnpackMsg(msg->maps[k], node_);
     origins3d = msg->origins;
     // Publish
     sensor_msgs::msg::PointCloud m;
@@ -69,7 +72,7 @@ void maps3d_callback(const multi_map_server::msg::MultiSparseMap3D::ConstPtr &ms
         }
     }
     // Publish
-    m.header.stamp = rclcpp::Clock().now();
+    m.header.stamp = node_->now();
     m.header.frame_id = string("/map");
     pub2->publish(m);
 }
@@ -77,17 +80,17 @@ void maps3d_callback(const multi_map_server::msg::MultiSparseMap3D::ConstPtr &ms
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
-    auto node = std::make_shared<rclcpp::Node>("multi_map_visualization");
+    node_ = std::make_shared<rclcpp::Node>("multi_map_visualization");
 
-    auto sub1 = node->create_subscription<multi_map_server::msg::MultiOccupancyGrid>(
+    auto sub1 = node_->create_subscription<multi_map_server::msg::MultiOccupancyGrid>(
         "dmaps2d", 1, maps2d_callback);
-    auto sub2 = node->create_subscription<multi_map_server::msg::MultiSparseMap3D>(
+    auto sub2 = node_->create_subscription<multi_map_server::msg::MultiSparseMap3D>(
         "dmaps3d", 1, maps3d_callback);
 
-    pub1 = node->create_publisher<multi_map_server::msg::MultiOccupancyGrid>("maps2d", 1);
-    pub2 = node->create_publisher<sensor_msgs::msg::PointCloud>("map3d", 1);
+    pub1 = node_->create_publisher<multi_map_server::msg::MultiOccupancyGrid>("maps2d", 1);
+    pub2 = node_->create_publisher<sensor_msgs::msg::PointCloud>("map3d", 1);
 
-    rclcpp::spin(node);
+    rclcpp::spin(node_);
     rclcpp::shutdown();
     return 0;
 }

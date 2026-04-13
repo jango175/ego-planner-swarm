@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp/node.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <armadillo>
@@ -356,12 +357,12 @@ public:
         }
     }
 
-    void PackMsg(multi_map_server::msg::SparseMap3D &msg)
+    void PackMsg(multi_map_server::msg::SparseMap3D &msg, rclcpp::Time time_now)
     {
         // Basic map info
-        msg.header.stamp = rclcpp::Clock().now();
+        msg.header.stamp = time_now;
         msg.header.frame_id = string("/map");
-        msg.info.map_load_time = rclcpp::Clock().now();
+        msg.info.map_load_time = time_now;
         msg.info.resolution = resolution;
         msg.info.origin.position.x = originX;
         msg.info.origin.position.y = originY;
@@ -383,7 +384,7 @@ public:
         updateCounter++;
     }
 
-    void UnpackMsg(const multi_map_server::msg::SparseMap3D &msg)
+    void UnpackMsg(const multi_map_server::msg::SparseMap3D &msg, rclcpp::Node::SharedPtr node)
     {
         // Unpack column msgs, Replace the whole column
         for (unsigned int k = 0; k < msg.lists.size(); k++)
@@ -396,7 +397,7 @@ public:
             mapBase[my * mapX + mx] = new OccupancyGridList;
             mapBase[my * mapX + mx]->UnpackMsg(msg.lists[k]);
         }
-        CheckDecayMap();
+        CheckDecayMap(node);
         updated = true;
     }
 
@@ -568,13 +569,13 @@ private:
         }
     }
 
-    void CheckDecayMap()
+    void CheckDecayMap(rclcpp::Node::SharedPtr node)
     {
         if (decayInterval < 0)
             return;
         // Check whether to decay
-        static rclcpp::Time prevDecayT = rclcpp::Clock().now();
-        rclcpp::Time  t = rclcpp::Clock().now();
+        static rclcpp::Time prevDecayT = node->now();
+        rclcpp::Time  t = node->now();
         double dt = (t - prevDecayT).seconds();
         if (dt > decayInterval)
         {

@@ -8,7 +8,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/empty.hpp>
 #include <vector>
-#include <quadrotor_msgs/msg/position_command.hpp>
+#include "quadrotor_msgs/msg/position_command.hpp"
 #include "traj_utils/msg/bspline.hpp"
 #include "traj_utils/msg/multi_bsplines.hpp"
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -121,6 +121,8 @@ namespace ego_planner
     void readGivenWps();
     void planNextWaypoint(const Eigen::Vector3d next_wp);
     void getLocalTarget();
+
+    void force_return();
 
     /* ROS functions */
     void execFSMCallback();

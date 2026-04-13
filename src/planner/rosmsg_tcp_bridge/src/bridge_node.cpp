@@ -22,6 +22,8 @@ using namespace std;
 
 int send_sock_, server_fd_, recv_sock_, udp_server_fd_, udp_send_fd_;
 
+rclcpp::Node::SharedPtr node_;
+
 rclcpp::Subscription<traj_utils::msg::MultiBsplines>::SharedPtr swarm_trajs_sub_;
 rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr other_odoms_sub_;
 rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr emergency_stop_sub_;
@@ -630,7 +632,7 @@ void odom_sub_udp_cb(const std::shared_ptr<const nav_msgs::msg::Odometry> &msg)
 {
 
   static rclcpp::Time t_last;
-  rclcpp::Time t_now = rclcpp::Clock().now();
+  rclcpp::Time t_now = node_->now();
   if ((t_now - t_last).seconds() * odom_broadcast_freq_ < 1.0)
   {
     return;
@@ -789,18 +791,18 @@ int main(int argc, char *argv[])
 {
   // 初始化ROS节点
   rclcpp::init(argc, argv);
-  auto node = rclcpp::Node::make_shared("rosmsg_tcp_bridge");
+  node_ = rclcpp::Node::make_shared("rosmsg_tcp_bridge");
 
   // 读取参数
-  node->declare_parameter("next_drone_ip", string("127.0.0.1"));
-  node->declare_parameter("broadcast_ip", string("127.0.0.255"));
-  node->declare_parameter("drone_id", -1);
-  node->declare_parameter("odom_max_freq", 1000.0);
+  node_->declare_parameter("next_drone_ip", string("127.0.0.1"));
+  node_->declare_parameter("broadcast_ip", string("127.0.0.255"));
+  node_->declare_parameter("drone_id", -1);
+  node_->declare_parameter("odom_max_freq", 1000.0);
 
-  node->get_parameter("next_drone_ip", tcp_ip_);
-  node->get_parameter("broadcast_ip", udp_ip_);
-  node->get_parameter("drone_id", drone_id_);
-  node->get_parameter("odom_max_freq", odom_broadcast_freq_);
+  node_->get_parameter("next_drone_ip", tcp_ip_);
+  node_->get_parameter("broadcast_ip", udp_ip_);
+  node_->get_parameter("drone_id", drone_id_);
+  node_->get_parameter("odom_max_freq", odom_broadcast_freq_);
 
 
   bsplines_msg_.reset(new traj_utils::msg::MultiBsplines);
@@ -810,33 +812,33 @@ int main(int argc, char *argv[])
 
   if (drone_id_ == -1)
   {
-    RCLCPP_ERROR(node->get_logger(), "Wrong drone_id!");
+    RCLCPP_ERROR(node_->get_logger(), "Wrong drone_id!");
     exit(EXIT_FAILURE);
   }
 
   string sub_traj_topic_name = string("/drone_") + std::to_string(drone_id_) + string("_planning/swarm_trajs");
-  swarm_trajs_sub_ = node->create_subscription<traj_utils::msg::MultiBsplines>(
+  swarm_trajs_sub_ = node_->create_subscription<traj_utils::msg::MultiBsplines>(
       sub_traj_topic_name.c_str(), 10, multitraj_sub_tcp_cb);
 
-  RCLCPP_INFO(node->get_logger(), "Finish!!!!!!!!!!!!!");
+  RCLCPP_INFO(node_->get_logger(), "Finish!!!!!!!!!!!!!");
 
   if (drone_id_ >= 1)
   {
     string pub_traj_topic_name = string("/drone_") + std::to_string(drone_id_ - 1) + string("_planning/swarm_trajs");
-    swarm_trajs_pub_ = node->create_publisher<traj_utils::msg::MultiBsplines>(pub_traj_topic_name.c_str(), 10);
+    swarm_trajs_pub_ = node_->create_publisher<traj_utils::msg::MultiBsplines>(pub_traj_topic_name.c_str(), 10);
   }
 
-  other_odoms_sub_ = node->create_subscription<nav_msgs::msg::Odometry>(
+  other_odoms_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
       "my_odom", 10, odom_sub_udp_cb);
-  other_odoms_pub_ = node->create_publisher<nav_msgs::msg::Odometry>(
+  other_odoms_pub_ = node_->create_publisher<nav_msgs::msg::Odometry>(
       "/others_odom", 10);
 
-  // emergency_stop_sub_ = node->create_subscription<std_msgs::msg::Empty>("emergency_stop_broadcast", 10, emergency_stop_sub_udp_cb);
-  // emergency_stop_pub_ = node->create_publisher<std_msgs::msg::Empty>("emergency_stop_recv", 10);
+  // emergency_stop_sub_ = node_->create_subscription<std_msgs::msg::Empty>("emergency_stop_broadcast", 10, emergency_stop_sub_udp_cb);
+  // emergency_stop_pub_ = node_->create_publisher<std_msgs::msg::Empty>("emergency_stop_recv", 10);
 
-  one_traj_sub_ = node->create_subscription<traj_utils::msg::Bspline>(
+  one_traj_sub_ = node_->create_subscription<traj_utils::msg::Bspline>(
       "/broadcast_bspline", 100, one_traj_sub_udp_cb);
-  one_traj_pub_ = node->create_publisher<traj_utils::msg::Bspline>(
+  one_traj_pub_ = node_->create_publisher<traj_utils::msg::Bspline>(
       "/broadcast_bspline2", 100);
 
   boost::thread recv_thd(server_fun);
@@ -854,7 +856,7 @@ int main(int argc, char *argv[])
 
   cout << "[rosmsg_tcp_bridge] start running" << endl;
 
-  rclcpp::spin(node);
+  rclcpp::spin(node_);
 
   close(send_sock_);
   close(recv_sock_);

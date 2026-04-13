@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp/time.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
@@ -242,10 +243,10 @@ public:
         updated = true;
     }
 
-    const nav_msgs::msg::OccupancyGrid &GetMap()
+    const nav_msgs::msg::OccupancyGrid &GetMap(rclcpp::Time time_now)
     {
-        map.header.stamp = rclcpp::Clock().now();
-        map.info.map_load_time = rclcpp::Clock().now();
+        map.header.stamp = time_now;
+        map.info.map_load_time = time_now;
         map.header.frame_id = string("/map");
         updated = false;
         return map;

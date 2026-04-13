@@ -170,7 +170,8 @@ namespace ego_planner
     Eigen::VectorXd best_variable_; //
     double min_cost_;               //
 
-    Eigen::Vector3d local_target_pt_; 
+    Eigen::Vector3d local_target_pt_;
+    rclcpp::Node::SharedPtr node_;
 
 #define INIT_min_ellip_dist_ 123456789.0123456789
     double min_ellip_dist_;

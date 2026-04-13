@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.8)
 project(local_sensing)
 
 # 设置编译选项
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_BUILD_TYPE Release)
 add_compile_options(-std=c++17)
 

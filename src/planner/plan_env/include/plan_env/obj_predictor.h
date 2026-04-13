@@ -29,6 +29,7 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <iostream>
 #include <list>
+#include <rclcpp/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 
@@ -112,6 +113,7 @@ namespace fast_planner
   public:
     int skip_num_;
     int queue_size_;
+    rclcpp::Node::SharedPtr node_;
     rclcpp::Time global_start_time_;
 
     ObjHistory()
@@ -121,7 +123,7 @@ namespace fast_planner
     {
     }
 
-    void init(int id, int skip_num, int queue_size, rclcpp::Time global_start_time);
+    void init(int id, int skip_num, int queue_size, rclcpp::Node::SharedPtr node);
 
     void poseCallback(const geometry_msgs::msg::PoseStamped::ConstPtr &msg);
 

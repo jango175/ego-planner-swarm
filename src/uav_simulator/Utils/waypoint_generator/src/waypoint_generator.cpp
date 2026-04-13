@@ -136,8 +136,8 @@ private:
 
     void publish_waypoints()
     {
-        waypoints.header.frame_id = std::string("world");
-        waypoints.header.stamp = rclcpp::Clock().now();
+        waypoints.header.frame_id = std::string("map");
+        waypoints.header.stamp = this->now();
         pub1->publish(waypoints);
         geometry_msgs::msg::PoseStamped init_pose;
         init_pose.header = odom.header;
@@ -151,8 +151,8 @@ private:
     {
         nav_msgs::msg::Path wp_vis = waypoints;
         geometry_msgs::msg::PoseArray poseArray;
-        poseArray.header.frame_id = std::string("world");
-        poseArray.header.stamp = rclcpp::Clock().now();
+        poseArray.header.frame_id = std::string("map");
+        poseArray.header.stamp = this->now();
 
         {
             geometry_msgs::msg::Pose init_pose;
@@ -210,7 +210,7 @@ private:
                 return;
             }*/
 
-        trigged_time = rclcpp::Clock().now(); // odom.header.stamp;
+        trigged_time = this->now(); // odom.header.stamp;
         // ROS_ASSERT(trigged_time > ros::Time(0));
 
         // ros::NodeHandle n("~");

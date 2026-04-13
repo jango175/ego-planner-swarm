@@ -11,8 +11,7 @@
 
 #include "maps.hpp"
 
-void
-optimizeMap(mocka::Maps::BasicInfo& in)
+void optimizeMap(mocka::Maps::BasicInfo& in)
 {
   std::vector<int>* temp = new std::vector<int>;
 
@@ -52,14 +51,13 @@ optimizeMap(mocka::Maps::BasicInfo& in)
   in.cloud->width -= temp->size();
 
   pcl::toROSMsg(*in.cloud, *in.output);
-  in.output->header.frame_id = "world";
+  in.output->header.frame_id = "map";
   RCLCPP_INFO(rclcpp::get_logger("optimizeMap"), "finish: number of points after optimization %d", in.cloud->width);
   delete temp;
   return;
 }
 
-int
-main(int argc, char** argv)
+int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
   rclcpp::Node::SharedPtr node = std::make_shared<rclcpp::Node>("mockamap");
