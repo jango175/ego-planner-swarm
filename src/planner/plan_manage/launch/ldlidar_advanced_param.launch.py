@@ -120,8 +120,9 @@ def generate_launch_description():
       'grid_map/local_update_range_y': 8.5,
       'grid_map/local_update_range_z': 7.5,
       'grid_map/obstacles_inflation': 0.5,
+      'grid_map/obstacles_inflation_z_mult': 1.25,
       'grid_map/local_map_margin': 20,
-      'grid_map/ground_height': -0.5,
+      'grid_map/ground_height': -0.625,
 
       # Camera parameter
       'grid_map/cx': cx,

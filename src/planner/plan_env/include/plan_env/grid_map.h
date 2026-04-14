@@ -56,6 +56,7 @@ struct MappingParameters
   Eigen::Vector3d local_update_range_;
   double resolution_, resolution_inv_;
   double obstacles_inflation_;
+  double obstacles_inflation_z_mult_;
   string frame_id_;
   int pose_type_;
 
@@ -204,11 +205,11 @@ private:
   MappingData md_;
 
   // get depth image and camera pose
-  void depthPoseCallback(const sensor_msgs::msg::Image::ConstPtr &img,
-                         const geometry_msgs::msg::PoseStamped::ConstPtr &pose);
-  void extrinsicCallback(const nav_msgs::msg::Odometry::ConstPtr &odom);
-  void depthOdomCallback(const sensor_msgs::msg::Image::ConstPtr &img, const nav_msgs::msg::Odometry::ConstPtr &odom);
-  void cloudCallback(const sensor_msgs::msg::PointCloud2::ConstPtr &img);
+  void depthPoseCallback(const sensor_msgs::msg::Image::ConstSharedPtr &img,
+                         const geometry_msgs::msg::PoseStamped::ConstSharedPtr &pose);
+  void extrinsicCallback(const nav_msgs::msg::Odometry::ConstSharedPtr &odom);
+  void depthOdomCallback(const sensor_msgs::msg::Image::ConstSharedPtr &img, const nav_msgs::msg::Odometry::ConstSharedPtr &odom);
+  void cloudCallback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr &img);
   void odomCallback(const nav_msgs::msg::Odometry::SharedPtr odom);
 
   // update occupancy by raycasting
@@ -220,7 +221,7 @@ private:
   void raycastProcess();
   void clearAndInflateLocalMap();
 
-  inline void inflatePoint(const Eigen::Vector3i &pt, int step, vector<Eigen::Vector3i> &pts);
+  inline void inflatePoint(const Eigen::Vector3i &pt, int step, int step_z, vector<Eigen::Vector3i> &pts);
   int setCacheOccupancy(Eigen::Vector3d pos, int occ);
   Eigen::Vector3d closetPointInMap(const Eigen::Vector3d &pt, const Eigen::Vector3d &camera_pt);
 
@@ -416,7 +417,7 @@ inline void GridMap::indexToPos(const Eigen::Vector3i &id, Eigen::Vector3d &pos)
     pos(i) = (id(i) + 0.5) * mp_.resolution_ + mp_.map_origin_(i);
 }
 
-inline void GridMap::inflatePoint(const Eigen::Vector3i &pt, int step, vector<Eigen::Vector3i> &pts)
+inline void GridMap::inflatePoint(const Eigen::Vector3i &pt, int step, int step_z, vector<Eigen::Vector3i> &pts)
 {
   int num = 0;
   /* ---------- + shape inflate ---------- */
@@ -440,7 +441,7 @@ inline void GridMap::inflatePoint(const Eigen::Vector3i &pt, int step, vector<Ei
   /* ---------- all inflate ---------- */
   for (int x = -step; x <= step; ++x)
     for (int y = -step; y <= step; ++y)
-      for (int z = -step; z <= step; ++z)
+      for (int z = -step_z; z <= step_z; ++z)
       {
         pts[num++] = Eigen::Vector3i(pt(0) + x, pt(1) + y, pt(2) + z);
       }

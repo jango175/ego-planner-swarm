@@ -28,7 +28,7 @@ double time_forward_;
 bool spin_done_ = true;
 
 
-void bsplineCallback(traj_utils::msg::Bspline::ConstPtr msg)
+void bsplineCallback(traj_utils::msg::Bspline::ConstSharedPtr msg)
 {
   // parse pos traj
 

@@ -170,7 +170,7 @@ private:
     }
 
     // 回调函数
-    void odom_callback(const nav_msgs::msg::Odometry::ConstPtr &msg)
+    void odom_callback(const nav_msgs::msg::Odometry::ConstSharedPtr &msg)
     {
         is_odom_ready = true;
         odom = *msg;
@@ -203,7 +203,7 @@ private:
         }
     }
 
-    void goal_callback(const geometry_msgs::msg::PoseStamped::ConstPtr &msg)
+    void goal_callback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr &msg)
     {
         /*    if (!is_odom_ready) {
                 ROS_ERROR("[waypoint_generator] No odom!");

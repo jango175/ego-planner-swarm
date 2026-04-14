@@ -18,7 +18,7 @@ vector<geometry_msgs::msg::Pose> origins2d;
 vector<Map3D> maps3d;
 vector<geometry_msgs::msg::Pose> origins3d;
 
-void maps2d_callback(const multi_map_server::msg::MultiOccupancyGrid::ConstPtr &msg)
+void maps2d_callback(const multi_map_server::msg::MultiOccupancyGrid::ConstSharedPtr &msg)
 {
     // Merge map
     maps2d.resize(msg->maps.size(), Map2D(4));
@@ -37,7 +37,7 @@ void maps2d_callback(const multi_map_server::msg::MultiOccupancyGrid::ConstPtr &
     pub1->publish(m);
 }
 
-void maps3d_callback(const multi_map_server::msg::MultiSparseMap3D::ConstPtr &msg)
+void maps3d_callback(const multi_map_server::msg::MultiSparseMap3D::ConstSharedPtr &msg)
 {
     // Update incremental map
     maps3d.resize(msg->maps.size());

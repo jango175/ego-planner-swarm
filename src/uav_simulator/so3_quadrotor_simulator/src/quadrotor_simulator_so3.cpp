@@ -173,7 +173,7 @@ getControl(const QuadrotorSimulator::Quadrotor &quad, const Command &cmd)
 }
 
 static void
-cmd_callback(const quadrotor_msgs::msg::SO3Command::ConstPtr &cmd)
+cmd_callback(const quadrotor_msgs::msg::SO3Command::ConstSharedPtr &cmd)
 {
     command.force[0] = cmd->force.x;
     command.force[1] = cmd->force.y;
@@ -196,7 +196,7 @@ cmd_callback(const quadrotor_msgs::msg::SO3Command::ConstPtr &cmd)
 }
 
 static void
-force_disturbance_callback(const geometry_msgs::msg::Vector3::ConstPtr &f)
+force_disturbance_callback(const geometry_msgs::msg::Vector3::ConstSharedPtr &f)
 {
     disturbance.f(0) = f->x;
     disturbance.f(1) = f->y;
@@ -204,7 +204,7 @@ force_disturbance_callback(const geometry_msgs::msg::Vector3::ConstPtr &f)
 }
 
 static void
-moment_disturbance_callback(const geometry_msgs::msg::Vector3::ConstPtr &m)
+moment_disturbance_callback(const geometry_msgs::msg::Vector3::ConstSharedPtr &m)
 {
     disturbance.m(0) = m->x;
     disturbance.m(1) = m->y;

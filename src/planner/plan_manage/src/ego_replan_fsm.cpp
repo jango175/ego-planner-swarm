@@ -183,6 +183,30 @@ namespace ego_planner
 
   void EGOReplanFSM::planNextWaypoint(const Eigen::Vector3d next_wp)
   {
+    // Check if the target isn't too close
+    double distance = (next_wp - odom_pos_).norm();
+    if (distance < 0.2)
+    {
+      RCLCPP_WARN(node_->get_logger(), "Target is already reached (dist: %.2f m). Ignoring command.", distance);
+
+      if (target_type_ == TARGET_TYPE::PRESET_TARGET && wp_id_ < waypoint_num_ - 1)
+      {
+        wp_id_++;
+        planNextWaypoint(wps_[wp_id_]);
+      }
+      else 
+      {
+        // Cancel the target and wait safely
+        have_target_ = false;
+        if (exec_state_ != WAIT_TARGET)
+        {
+          changeFSMExecState(WAIT_TARGET, "SAFETY");
+        }
+      }
+
+      return;
+    }
+
     bool success = false;
     success = planner_manager_->planGlobalTraj(odom_pos_, odom_vel_, Eigen::Vector3d::Zero(), next_wp, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
 

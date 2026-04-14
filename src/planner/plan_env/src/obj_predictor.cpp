@@ -43,7 +43,7 @@ namespace fast_planner
     global_start_time_ = node->now();
   }
 
-  void ObjHistory::poseCallback(const geometry_msgs::msg::PoseStamped::ConstPtr &msg)
+  void ObjHistory::poseCallback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr &msg)
   {
     ++skip_;
     if (skip_ < skip_num_)
@@ -200,7 +200,7 @@ namespace fast_planner
     predictConstVel();
   }
 
-  void ObjPredictor::markerCallback(const visualization_msgs::msg::Marker::ConstPtr &msg)
+  void ObjPredictor::markerCallback(const visualization_msgs::msg::Marker::ConstSharedPtr &msg)
   {
     int idx = msg->id;
     (*obj_scale_)[idx](0) = msg->scale.x;
