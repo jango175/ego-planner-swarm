@@ -2,6 +2,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <quadrotor_msgs/msg/so3_command.hpp>
 #include <quadrotor_msgs/msg/position_command.hpp>
+#include <rclcpp/utilities.hpp>
 #include <so3_quadrotor_simulator/Quadrotor.h>
 #include <std_msgs/msg/bool.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -316,39 +317,44 @@ int main(int argc, char **argv)
     imu.header.frame_id = "/simulator";
 
     rclcpp::Time next_odom_pub_time = node->now();
-    while (rclcpp::ok())
-    {
-        rclcpp::spin_some(node);
 
-        auto last = control;
-        control = getControl(quad, command);
-        for (int i = 0; i < 4; ++i)
+    // Create the timer
+    std::chrono::duration<double> period_seconds(1.0 / simulation_rate);
+    rclcpp::TimerBase::SharedPtr pub_timer_ = node->create_wall_timer(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(period_seconds),
+        [&]()
         {
-            //! @bug might have nan when the input is legal
-            if (std::isnan(control.rpm[i]))
+            auto last = control;
+            control = getControl(quad, command);
+            for (int i = 0; i < 4; ++i)
             {
-                control.rpm[i] = last.rpm[i];
+                //! @bug might have nan when the input is legal
+                if (std::isnan(control.rpm[i]))
+                {
+                    control.rpm[i] = last.rpm[i];
+                }
+            }
+
+            quad.setInput(control.rpm[0], control.rpm[1], control.rpm[2], control.rpm[3]);
+            quad.setExternalForce(disturbance.f);
+            quad.setExternalMoment(disturbance.m);
+            quad.step(dt);
+
+            rclcpp::Time tnow = node->now();
+
+            if (tnow >= next_odom_pub_time)
+            {
+                next_odom_pub_time += odom_pub_duration;
+                odom_msg.header.stamp = tnow;
+                auto state = quad.getState();
+                stateToOdomMsg(state, odom_msg);
+                quadToImuMsg(quad, imu);
+                odom_pub_->publish(odom_msg);
+                imu_pub_->publish(imu);
             }
         }
+    );
 
-        quad.setInput(control.rpm[0], control.rpm[1], control.rpm[2], control.rpm[3]);
-        quad.setExternalForce(disturbance.f);
-        quad.setExternalMoment(disturbance.m);
-        quad.step(dt);
-
-        rclcpp::Time tnow = node->now();
-
-        if (tnow >= next_odom_pub_time)
-        {
-            next_odom_pub_time += odom_pub_duration;
-            odom_msg.header.stamp = tnow;
-            auto state = quad.getState();
-            stateToOdomMsg(state, odom_msg);
-            quadToImuMsg(quad, imu);
-            odom_pub_->publish(odom_msg);
-            imu_pub_->publish(imu);
-        }
-
-        r.sleep();
-    }
+    rclcpp::spin(node);
+    rclcpp::shutdown();
 }

@@ -217,13 +217,7 @@ int main(int argc, char** argv) {
   _GLY_SIZE = static_cast<int>(_y_size * _inv_resolution);
   _GLZ_SIZE = static_cast<int>(_z_size * _inv_resolution);
 
-  rclcpp::Rate rate(100);
-  bool status = rclcpp::ok();
-  while (status) {
-    rclcpp::spin_some(node);  
-    status = rclcpp::ok();
-    rate.sleep();
-  }
+  rclcpp::spin(node);
 
   rclcpp::shutdown();
   return 0;

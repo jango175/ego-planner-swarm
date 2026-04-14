@@ -119,7 +119,7 @@ def generate_launch_description():
       'grid_map/local_update_range_x': 8.5,
       'grid_map/local_update_range_y': 8.5,
       'grid_map/local_update_range_z': 7.5,
-      'grid_map/obstacles_inflation': 2.0,
+      'grid_map/obstacles_inflation': 0.5,
       'grid_map/local_map_margin': 20,
       'grid_map/ground_height': -0.5,
 
@@ -168,7 +168,7 @@ def generate_launch_description():
       'optimization/lambda_collision': 0.5,
       'optimization/lambda_feasibility': 0.1,
       'optimization/lambda_fitness': 1.0,
-      'optimization/dist0': 1.5,
+      'optimization/dist0': 0.5,
       'optimization/swarm_clearance': 0.5,
       'optimization/max_vel': max_vel,
       'optimization/max_acc': max_acc,

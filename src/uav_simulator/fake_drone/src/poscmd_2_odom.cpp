@@ -108,16 +108,17 @@ int main(int argc, char *argv[])
         "command", 1, rcvPosCmdCallBack);
     _odom_pub = node_->create_publisher<nav_msgs::msg::Odometry>("odometry", 1);
 
-    // 主循环，发布里程计信息
-    rclcpp::Rate rate(100);  // 100Hz
-    bool status = rclcpp::ok();
-    while (status)
-    {
-        pubOdom();
-        rclcpp::spin_some(node_);
-        status = rclcpp::ok();
-        rate.sleep();
-    }
+    // Create the timer
+    int period_ms = 10; // 100 Hz
+    rclcpp::TimerBase::SharedPtr pub_timer_ = node_->create_wall_timer(
+        std::chrono::milliseconds(period_ms),
+        []()
+        {
+            pubOdom();
+        }
+    );
+
+    rclcpp::spin(node_);
 
     rclcpp::shutdown();
     return 0;

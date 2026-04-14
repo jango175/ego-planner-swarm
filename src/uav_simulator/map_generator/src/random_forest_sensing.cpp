@@ -474,14 +474,17 @@ int main(int argc, char **argv)
     // RandomMapGenerate();
     RandomMapGenerateCylinder();
 
-    // 设置循环频率并开始主循环
-    rclcpp::Rate loop_rate(_sense_rate);
-    while (rclcpp::ok()) {
-        // 发布感知到的点云数据
+    // Create the timer
+    int period_ms = 1000 / _sense_rate;
+    rclcpp::TimerBase::SharedPtr pub_timer_ = node->create_wall_timer(
+      std::chrono::milliseconds(period_ms),
+      []()
+      {
         pubSensedPoints();
-        rclcpp::spin_some(node);
-        loop_rate.sleep();
-    }
+      }
+    );
+
+    rclcpp::spin(node);
 
     rclcpp::shutdown();
     return 0;

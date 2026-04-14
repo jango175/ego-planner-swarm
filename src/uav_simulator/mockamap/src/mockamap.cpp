@@ -1,3 +1,4 @@
+#include <rclcpp/executors.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
@@ -67,7 +68,7 @@ int main(int argc, char** argv)
     node->create_publisher<sensor_msgs::msg::PointCloud2>("mock_map", 1);
 
   pcl::PointCloud<pcl::PointXYZ> cloud;
-  sensor_msgs::msg::PointCloud2       output;
+  sensor_msgs::msg::PointCloud2 output;
   // Fill in the cloud data
 
   // 获取参数
@@ -120,14 +121,17 @@ int main(int argc, char** argv)
   map.setInfo(info);
   map.generate(type);
 
-  // 订阅循环
-  rclcpp::Rate loop_rate(update_freq);
-  while (rclcpp::ok())
-  {
-    pcl_pub->publish(output);
-    rclcpp::spin_some(node);  // 这里使用 spin_some 代替 ros::spinOnce()
-    loop_rate.sleep();
-  }
+  // Create the timer
+  std::chrono::duration<double> period_seconds(1.0 / update_freq);
+  rclcpp::TimerBase::SharedPtr pub_timer_ = node->create_wall_timer(
+std::chrono::duration_cast<std::chrono::nanoseconds>(period_seconds),
+    [pcl_pub, &output]()
+    {
+      pcl_pub->publish(output);
+    }
+  );
+
+  rclcpp::spin(node);
 
   rclcpp::shutdown();
   return 0;

@@ -87,6 +87,7 @@ namespace ego_planner
     Eigen::Vector3d hover_pos_;
     rclcpp::Time t_prev_;
     bool spin_done_{true};
+    bool redo_spin_{true};
 
     /* ROS utils */
     rclcpp::Node::SharedPtr node_;

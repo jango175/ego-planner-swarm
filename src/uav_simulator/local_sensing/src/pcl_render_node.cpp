@@ -449,13 +449,7 @@ int main(int argc, char **argv) {
   _GLY_SIZE = (int)(_y_size * _inv_resolution);
   _GLZ_SIZE = (int)(_z_size * _inv_resolution);
 
-  rclcpp::Rate rate(100);
-  bool status = rclcpp::ok();
-  while (status) {
-    rclcpp::spin_some(node_);
-    status = rclcpp::ok();
-    rate.sleep();
-  }
+  rclcpp::spin(node_);
 
   rclcpp::shutdown();
   return 0;

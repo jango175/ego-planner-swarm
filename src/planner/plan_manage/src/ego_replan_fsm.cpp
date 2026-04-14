@@ -144,24 +144,6 @@ namespace ego_planner
         {
           this->triggerCallback(msg);
         });
-
-      RCLCPP_INFO(node_->get_logger(), "Wait for 1 second.");
-      int count = 0;
-      while (rclcpp::ok() && count++ < 1000)
-      {
-        rclcpp::spin_some(node_);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      }
-
-      RCLCPP_WARN(node_->get_logger(), "Waiting for trigger from [n3ctrl] from RC");
-
-      while (rclcpp::ok() && (!have_odom_ || !have_trigger_))
-      {
-        rclcpp::spin_some(node_);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      }
-
-      readGivenWps();
     }
     else
     {
@@ -225,14 +207,13 @@ namespace ego_planner
       {
         changeFSMExecState(GEN_NEW_TRAJ, "TRIG");
       }
+      else if (exec_state_ == EXEC_TRAJ)
+      {
+        changeFSMExecState(REPLAN_TRAJ, "TRIG");
+      }
       else
       {
-        while (exec_state_ != EXEC_TRAJ)
-        {
-          rclcpp::spin_some(node_);
-          std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-        changeFSMExecState(REPLAN_TRAJ, "TRIG");
+        changeFSMExecState(GEN_NEW_TRAJ, "TRIG");
       }
 
       visualization_->displayGlobalPathList(gloabl_traj, 0.1, 0);
@@ -498,7 +479,7 @@ namespace ego_planner
 
   bool EGOReplanFSM::doInitSpin()
   {
-    if (!enable_init_spin_)
+    if (!enable_init_spin_ || !redo_spin_)
       return true;
 
     std_msgs::msg::Bool msg;
@@ -565,6 +546,7 @@ namespace ego_planner
       msg.data = true;
       traj_switch_pub->publish(msg);
       spin_done_ = true;
+      redo_spin_ = false;
 
       RCLCPP_INFO(node_->get_logger(), "Spin done!");
     }
@@ -604,6 +586,14 @@ namespace ego_planner
 
       case WAIT_TARGET:
       {
+        redo_spin_ = true;
+
+        if (target_type_ == TARGET_TYPE::PRESET_TARGET && have_odom_ && have_trigger_ && !have_target_)
+        {
+          readGivenWps();
+          break;
+        }
+
         if (!have_target_ || !have_trigger_)
         {
           force_return();
@@ -734,6 +724,8 @@ namespace ego_planner
 
       case EMERGENCY_STOP:
       {
+        redo_spin_ = true;
+
         if (flag_escape_emergency_) // Avoiding repeated calls
         {
           callEmergencyStop(odom_pos_);
