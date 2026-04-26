@@ -1,6 +1,6 @@
 # Changes in this fork
 * Added support for ROS 2 Jazzy.
-* Package now work with 2D LIDAR data.
+* Package now work with 2D LiDAR data.
 * Added look-around spin in the beginning of the trajectory.
 
 # Usage
@@ -13,7 +13,7 @@ It might be due to some incorrect settings in my publish/subscribe configuration
 
 ### 2.1 Install cyclonedds
 ```bash
-sudo apt install ros-humble-rmw-cyclonedds-cpp
+sudo apt install ros-jazzy-rmw-cyclonedds-cpp
 ```
 
 ### 2.2 Change default DDS
@@ -54,6 +54,21 @@ ros2 launch ego_planner swarm_large.launch.py
 ros2 launch ego_planner single_run_in_sim.launch.py use_mockamap:=True use_dynamic:=False
 ```
 
+## 4. Running with the 2D LiDAR
+```bash
+RMW_IMPLEMENTATION=rmw_cyclonedds_cpp ros2 launch ego_planner ldlidar_advanced_param.launch.py
+```
+Send a waypoint for the `ego_planner` with:
+```bash
+ros2 topic pub --once /goal_pose geometry_msgs/msg/PoseStamped "{
+  header: {frame_id: 'map'},
+  pose: {
+    position: {x: 4.0, y: 4.0, z: 3.0},
+    orientation: {w: 1.0}
+  }
+}"
+```
+
 # Sources
 * https://github.com/ZJU-FAST-Lab/ego-planner-swarm
-* https://github.com/jango175/lidar_mapper
+* https://github.com/jango175/lidar_mapper_visualiser

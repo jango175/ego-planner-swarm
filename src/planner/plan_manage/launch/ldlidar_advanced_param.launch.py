@@ -112,7 +112,7 @@ def generate_launch_description():
       'fsm/waypoint0_y': point0_y,
       'fsm/waypoint0_z': point0_z,
 
-      'grid_map/resolution': 0.1,
+      'grid_map/resolution': 0.15,
       'grid_map/map_size_x': map_size_x,
       'grid_map/map_size_y': map_size_y,
       'grid_map/map_size_z': map_size_z,
