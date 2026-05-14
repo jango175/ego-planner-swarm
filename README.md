@@ -58,6 +58,11 @@ ros2 launch ego_planner single_run_in_sim.launch.py use_mockamap:=True use_dynam
 ```bash
 RMW_IMPLEMENTATION=rmw_cyclonedds_cpp ros2 launch ego_planner ldlidar_advanced_param.launch.py
 ```
+or with the simulator (and `lidar_mapper_visualizer` instead):
+```bash
+RMW_IMPLEMENTATION=rmw_cyclonedds_cpp ros2 launch ego_planner ldlidar_advanced_param.launch.py use_sim_time:='true'
+```
+
 Send a waypoint for the `ego_planner` with:
 ```bash
 ros2 topic pub --once /goal_pose geometry_msgs/msg/PoseStamped "{

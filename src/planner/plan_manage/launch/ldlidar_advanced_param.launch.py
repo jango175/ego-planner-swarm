@@ -1,6 +1,6 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 
 
@@ -37,7 +37,13 @@ def generate_launch_description():
 
   drone_id = LaunchConfiguration('drone_id', default=0)
 
-  use_sim_time = LaunchConfiguration("use_sim_time", default=True)
+  use_sim_time = LaunchConfiguration("use_sim_time", default=False)
+
+  input_cloud_topic = PythonExpression([
+    "'/lidar_mapper_visualizer/global_map' if '",
+    use_sim_time,
+    "' == 'true' else '/lidar_mapper/global_map'"
+  ])
 
   # DeclareLaunchArguments
   map_size_x_arg = DeclareLaunchArgument('map_size_x_', default_value=map_size_x, description='Map size along X')
@@ -205,9 +211,13 @@ def generate_launch_description():
   ldlidar_qos_bridge_node = Node(
     package='ego_planner',
     executable='ldlidar_qos_bridge.py',
-    name='ldlidar_qos_bridge',
+    name=['drone_', drone_id, '_qos_bridge'],
     output='screen',
-    emulate_tty=True
+    emulate_tty=True,
+    parameters=[{
+      'drone_id': drone_id,
+      'input_cloud_topic': input_cloud_topic
+    }]
   )
 
   # Create LaunchDescription

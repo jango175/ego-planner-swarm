@@ -28,7 +28,11 @@ class LDLidarQoSBridge(Node):
 
     super().__init__('ldlidar_qos_bridge')
 
-    self.drone_id: int = 0
+    self.declare_parameter('drone_id', 0)
+    self.declare_parameter('input_cloud_topic', '/lidar_mapper_visualizer/global_map')
+
+    self.drone_id: int = self.get_parameter('drone_id').value
+    self.input_cloud_topic: str = self.get_parameter('input_cloud_topic').value
 
     # Odometry bridge (MAVROS -> EGO-Planner)
     self.odom_sub: Subscription = self.create_subscription(
@@ -46,7 +50,7 @@ class LDLidarQoSBridge(Node):
     # PointCloud bridge (LiDAR -> EGO-Planner)
     self.cloud_sub: Subscription = self.create_subscription(
       PointCloud2,
-      '/lidar_mapper_visualiser/global_map',
+      self.input_cloud_topic,
       self.cloud_callback,
       qos_profile_sensor_data
     )
