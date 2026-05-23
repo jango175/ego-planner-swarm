@@ -40,9 +40,9 @@ def generate_launch_description():
   use_sim_time = LaunchConfiguration("use_sim_time", default=False)
 
   input_cloud_topic = PythonExpression([
-    "'/lidar_mapper_visualizer/global_map' if '",
+    "'/lidar_mapper_visualizer/global_octomap' if '",
     use_sim_time,
-    "' == 'true' else '/lidar_mapper/global_map'"
+    "' == 'true' else '/lidar_mapper/global_octomap'"
   ])
 
   # DeclareLaunchArguments

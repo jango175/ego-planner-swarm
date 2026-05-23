@@ -76,4 +76,6 @@ ros2 topic pub --once /goal_pose geometry_msgs/msg/PoseStamped "{
 
 # Sources
 * https://github.com/ZJU-FAST-Lab/ego-planner-swarm
-* https://github.com/jango175/lidar_mapper_visualiser
+* https://github.com/jango175/lidar_mapper
+* https://github.com/jango175/lidar_mapper_visualizer
+* https://github.com/jango175/mark4_ardupilot_sitl
