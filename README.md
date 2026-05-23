@@ -29,29 +29,16 @@ ros2 doctor --report | grep "RMW middleware"
 If the output shows `rmw_cyclonedds_cpp`, the modification is successful.
 
 ## 3. Running the Code
+
 ### 3.1 Launch Rviz
 ```bash
 ros2 launch ego_planner rviz.launch.py
 ```
+
 ### 3.2 Run the planning program
 Open a new terminal and execute:
-* Single drone
 ```bash
-ros2 launch ego_planner single_run_in_sim.launch.py
-```
-* swarm
-```bash
-ros2 launch ego_planner swarm.launch.py
-```
-* large swarm
-```bash
-ros2 launch ego_planner swarm_large.launch.py
-```
-* Additional parameters (optional):
-    * `use_mockamap`: Map generation method. Default: False (uses Random Forest), True uses mockamap.
-    * `use_dynamic`: Whether to consider dynamics. Default: False (disabled), True enables dynamics.
-```bash
-ros2 launch ego_planner single_run_in_sim.launch.py use_mockamap:=True use_dynamic:=False
+ros2 launch ego_planner advanced_param.launch.launch.py
 ```
 
 ## 4. Running with the 2D LiDAR
@@ -63,6 +50,7 @@ or with the simulator (and `lidar_mapper_visualizer` instead):
 RMW_IMPLEMENTATION=rmw_cyclonedds_cpp ros2 launch ego_planner ldlidar_advanced_param.launch.py use_sim_time:='true'
 ```
 
+## 5. Waypoints
 Send a waypoint for the `ego_planner` with:
 ```bash
 ros2 topic pub --once /goal_pose geometry_msgs/msg/PoseStamped "{
