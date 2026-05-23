@@ -216,10 +216,10 @@ namespace ego_planner
 
       constexpr double step_size_t = 0.1;
       int i_end = floor(planner_manager_->global_data_.global_duration_ / step_size_t);
-      vector<Eigen::Vector3d> gloabl_traj(i_end);
+      vector<Eigen::Vector3d> global_traj(i_end);
       for (int i = 0; i < i_end; i++)
       {
-        gloabl_traj[i] = planner_manager_->global_data_.global_traj_.evaluate(i * step_size_t);
+        global_traj[i] = planner_manager_->global_data_.global_traj_.evaluate(i * step_size_t);
       }
 
       end_vel_.setZero();
@@ -240,7 +240,7 @@ namespace ego_planner
         changeFSMExecState(GEN_NEW_TRAJ, "TRIG");
       }
 
-      visualization_->displayGlobalPathList(gloabl_traj, 0.1, 0);
+      visualization_->displayGlobalPathList(global_traj, 0.1, 0);
     }
     else
     {
@@ -609,15 +609,15 @@ namespace ego_planner
 
       case WAIT_TARGET:
       {
-        redo_spin_ = true;
-
         if (target_type_ == TARGET_TYPE::PRESET_TARGET && have_odom_ && have_trigger_ && !have_target_)
         {
-          planner_start_time_ = node_->now();
-          planner_emergency_stop_num_ = 0;
           readGivenWps();
           break;
         }
+
+        redo_spin_ = true;
+        planner_start_time_ = node_->now();
+        planner_emergency_stop_num_ = 0;
 
         if (!have_target_ || !have_trigger_)
         {
@@ -731,8 +731,9 @@ namespace ego_planner
 
             rclcpp::Time planner_stop_time = node_->now();
             double planner_elapsed_time = (planner_stop_time - planner_start_time_).seconds();
-            RCLCPP_INFO(node_->get_logger(), "Elapsed time: %f seconds", planner_elapsed_time);
+            RCLCPP_INFO(node_->get_logger(), "Elapsed time: %f s", planner_elapsed_time);
             RCLCPP_INFO(node_->get_logger(), "Number of emergency stops: %u", planner_emergency_stop_num_);
+
             changeFSMExecState(WAIT_TARGET, "FSM");
 
             force_return();
@@ -754,7 +755,6 @@ namespace ego_planner
       case EMERGENCY_STOP:
       {
         redo_spin_ = true;
-        planner_emergency_stop_num_++;
 
         if (flag_escape_emergency_) // Avoiding repeated calls
         {
@@ -860,6 +860,7 @@ namespace ego_planner
       RCLCPP_ERROR(node_->get_logger(), "Depth Lost! EMERGENCY_STOP");
 
       enable_fail_safe_ = false;
+      planner_emergency_stop_num_++;
       changeFSMExecState(EMERGENCY_STOP, "SAFETY");
     }
 
@@ -913,6 +914,7 @@ namespace ego_planner
           {
             RCLCPP_WARN(node_->get_logger(), "Suddenly discovered obstacles. emergency stop! time=%f", t - t_cur);
 
+            planner_emergency_stop_num_++;
             changeFSMExecState(EMERGENCY_STOP, "SAFETY");
           }
           else
