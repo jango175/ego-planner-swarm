@@ -91,6 +91,10 @@ namespace ego_planner
 
     rclcpp::Time planner_start_time_;
     unsigned int planner_emergency_stop_num_{0};
+    bool is_escaping_{false};
+    Eigen::Vector3d escape_start_pos_;
+    double emergency_deflate_scale_{1.0};
+    double emergency_escape_distance_{0.0};
 
     /* ROS utils */
     rclcpp::Node::SharedPtr node_;

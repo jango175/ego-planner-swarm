@@ -112,6 +112,8 @@ def generate_launch_description():
       'fsm/fail_safe': True,
       'fsm/do_init_spin': True,
       'fsm/target_yaw_rate': 0.5,
+      'fsm/emergency_deflate_scale': 0.75,
+      'fsm/emergency_escape_distance': 1.5,
 
       'fsm/waypoint_num': point_num,
       'fsm/waypoint0_x': point0_x,
@@ -175,7 +177,7 @@ def generate_launch_description():
       'optimization/lambda_collision': 0.5,
       'optimization/lambda_feasibility': 0.1,
       'optimization/lambda_fitness': 1.0,
-      'optimization/dist0': 0.5,
+      'optimization/dist0': 1.0,
       'optimization/swarm_clearance': 0.5,
       'optimization/max_vel': max_vel,
       'optimization/max_acc': max_acc,

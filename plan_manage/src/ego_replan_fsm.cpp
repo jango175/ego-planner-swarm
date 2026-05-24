@@ -52,6 +52,11 @@ namespace ego_planner
     node_->declare_parameter("fsm/target_yaw_rate", 0.5);
     node_->get_parameter("fsm/target_yaw_rate", target_yaw_rate_);
 
+    node_->declare_parameter("fsm/emergency_deflate_scale", 1.0);
+    node_->get_parameter("fsm/emergency_deflate_scale", emergency_deflate_scale_);
+    node_->declare_parameter("fsm/emergency_escape_distance", 0.0);
+    node_->get_parameter("fsm/emergency_escape_distance", emergency_escape_distance_);
+
     /* initialize main modules */
     visualization_.reset(new PlanningVisualization(node_));
 
@@ -700,6 +705,18 @@ namespace ego_planner
 
       case EXEC_TRAJ:
       {
+        if (is_escaping_)
+        {
+          double dist_from_danger = (odom_pos_ - escape_start_pos_).norm();
+
+          // if the drone has moved away, it is likely safe
+          if (dist_from_danger > emergency_escape_distance_)
+          {
+            planner_manager_->grid_map_->scaleGridMapInflation(1.0);
+            is_escaping_ = false;
+          }
+        }
+
         /* determine if need to replan */
         LocalTrajData *info = &planner_manager_->local_data_;
         rclcpp::Time time_now = node_->now();
@@ -755,6 +772,13 @@ namespace ego_planner
       case EMERGENCY_STOP:
       {
         redo_spin_ = true;
+        planner_manager_->grid_map_->scaleGridMapInflation(emergency_deflate_scale_);
+
+        if (!is_escaping_)
+        {
+          is_escaping_ = true;
+          escape_start_pos_ = odom_pos_;
+        }
 
         if (flag_escape_emergency_) // Avoiding repeated calls
         {

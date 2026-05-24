@@ -1,4 +1,5 @@
 #include "plan_env/grid_map.h"
+#include <rclcpp/logging.hpp>
 
 // #define current_img_ md_.depth_image_[image_cnt_ & 1]
 // #define last_img_ md_.depth_image_[!(image_cnt_ & 1)]
@@ -84,6 +85,8 @@ void GridMap::initMap(rclcpp::Node::SharedPtr node)
   node_->get_parameter("grid_map/local_map_margin", mp_.local_map_margin_);
   node_->get_parameter("grid_map/ground_height", mp_.ground_height_);
   node_->get_parameter("grid_map/odom_depth_timeout", mp_.odom_depth_timeout_);
+
+  orig_obstacles_inflation_ = mp_.obstacles_inflation_;
 
   if (mp_.virtual_ceil_height_ - mp_.ground_height_ > z_size)
   {
@@ -1078,4 +1081,15 @@ void GridMap::depthOdomCallback(const sensor_msgs::msg::Image::ConstSharedPtr &i
 
   md_.occ_need_update_ = true;
   md_.flag_use_depth_fusion = true;
+}
+
+void GridMap::scaleGridMapInflation(double scale)
+{
+  if (scale <= 0.0)
+  {
+    RCLCPP_ERROR(node_->get_logger(), "Wrong grid map inflation scaling factor!");
+    return;
+  }
+
+  mp_.obstacles_inflation_ = scale * orig_obstacles_inflation_;
 }

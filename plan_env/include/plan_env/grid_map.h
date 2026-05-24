@@ -196,6 +196,8 @@ public:
   int getVoxelNum();
   bool getOdomDepthTimeout() { return md_.flag_depth_odom_timeout_; }
 
+  void scaleGridMapInflation(double scale);
+
   typedef std::shared_ptr<GridMap> Ptr;
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -257,6 +259,8 @@ private:
   uniform_real_distribution<double> rand_noise_;
   normal_distribution<double> rand_noise2_;
   default_random_engine eng_;
+
+  double orig_obstacles_inflation_;
 };
 
 /* ============================== definition of inline function
